@@ -5401,6 +5401,7 @@ export const Post = memo(
     author,
     currentUser,
     users = [],
+    stories = [],
     onProfileClick,
     onReact,
     onShare,
@@ -5432,6 +5433,7 @@ export const Post = memo(
     author: User | any;
     currentUser: User | null;
     users?: User[];
+    stories?: any[];
 
     onProfileClick: (id: number) => void;
 
@@ -5862,6 +5864,7 @@ export const Post = memo(
             author={a}
             currentUser={currentUser}
             users={users}
+            stories={stories}
             onProfileClick={onProfileClick}
             onReact={(postItem, rType) => onReact(post, rType)}
             onShare={(postId, newCount) => {
@@ -8582,6 +8585,7 @@ interface FeedProps {
   // ========== NEW PROPS ==========
   items?: FeedItem[];
   onOpenStory?: (story: Story) => void;
+  stories?: any[];
   // ========== END NEW PROPS ==========
 
   feedItems: any[];
@@ -8702,6 +8706,7 @@ export const Feed = memo(({
   items,
   feedItems: feedItemsProp,
   onOpenStory,
+  stories = [],
   currentUser,
   users,
   onProfileClick,
@@ -8882,6 +8887,7 @@ export const Feed = memo(({
   author={getPostAuthor?.(post as PostType) || post.author || post}
   currentUser={currentUser}
   users={users}
+  stories={stories}
   onProfileClick={onProfileClick}
   onReact={onReact}
   onShare={onShare}

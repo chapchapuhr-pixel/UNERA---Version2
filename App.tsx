@@ -17,6 +17,7 @@ import { StoryReel, CreateStoryModal, StoryViewerModal, StoryCommentsSheet } fro
 import { UserProfile } from './components/UserProfile';
 import { MarketplacePage, ProductDetailModal } from './components/Marketplace';
 import { ReelsFeed } from './components/Reels';
+import { VideosPage } from './components/VideosPage';
 import { AllEvents } from "./components/AllEvents";
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ImageViewer, ProfessionalLoader } from './components/Common';
@@ -10484,10 +10485,11 @@ return (
   // =========================
   // ✅ INFINITE SCROLL
   // =========================
-items={[...mixedFeedItems, ...extraFeedItems]}
-onLoadMoreFeed={loadMoreFeed}
-hasMoreFeed={hasMoreFeed}
-feedLoadingMore={feedLoadingMore}
+  stories={safeArray(orderedStories)}
+  items={[...mixedFeedItems, ...extraFeedItems]}
+  onLoadMoreFeed={loadMoreFeed}
+  hasMoreFeed={hasMoreFeed}
+  feedLoadingMore={feedLoadingMore}
 />
       </MarketplaceContext.Provider>
     </div>
@@ -10495,35 +10497,23 @@ feedLoadingMore={feedLoadingMore}
 )}   
      
 {view === 'reels' && (
-  <ReelsFeed
+  <VideosPage
+    posts={safeArray(posts)}
     reels={safeArray(reels)}
     users={safeArray(users)}
+    stories={safeArray(orderedStories)}
     currentUser={currentUser}
+    onPostVideoClick={handleVideoClickFromCreate}
     onProfileClick={(id) => openProfile(id)}
-    onReact={reactToReel}
-    onComment={commentOnReel}
-    onEditComment={editCommentOnReel}
-    onDeleteComment={deleteCommentOnReel}
-    onEditReel={editReel}
-    onDeleteReel={deleteReel}
+    onStoryClick={(id) => openProfile(id)}
+    onReact={(postOrId, type) => {
+      const pid = typeof postOrId === 'object' ? (postOrId.reel_id || postOrId.id) : postOrId;
+      reactToReel(pid, type);
+    }}
     onShare={shareReel}
     onFollow={followUser}
     checkIsFollowing={checkIsFollowing}
-    followLoading={followLoading}
-    initialReelId={typeof selectedReelId === 'number' ? selectedReelId : null}
     onBack={goBack}
-    onVideoClick={(sound) => {
-      // ✅ NATIVE APP - Use Flutter gallery + camera
-      if (isUneraNativeApp()) {
-        if (openNativeReelGallery(sound)) return;
-      }
-      // ✅ WEB BROWSER - Use direct file picker
-      openDirectFilePicker(sound);
-    }}
-    // ✅ ADD THESE THREE PROPS
-    reelPublishing={reelPublishing}
-    reelPublishingProgress={reelPublishingProgress}
-    reelPublishingText={reelPublishingText}
   />
 )}
   

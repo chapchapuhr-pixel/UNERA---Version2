@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { apiFetch } from '../utils/api';
 import { safeUserId, avatarFrom, formatRelativeTime } from './Feed';
 
@@ -7,7 +7,10 @@ interface InstagramVideoCardProps {
   author: any;
   currentUser: any;
   users?: any[];
+  stories?: any[];
+  hasStory?: boolean;
   onProfileClick: (userId: number) => void;
+  onStoryClick?: (userId: number) => void;
   onReact?: (postId: number, type: any) => void;
   onShare?: (postId: number, count: number) => void;
   onVideoClick?: (post: any) => void;
@@ -39,7 +42,10 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
   author,
   currentUser,
   users = [],
+  stories = [],
+  hasStory,
   onProfileClick,
+  onStoryClick,
   onReact,
   onShare,
   onVideoClick,
@@ -52,6 +58,42 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastTapRef = useRef<number>(0);
+
+  // Verification check - ONLY show if really verified, NEVER faked
+  const isVerified = Boolean(
+    author?.is_verified ||
+    author?.verified ||
+    post?.user?.is_verified ||
+    post?.user?.verified ||
+    post?.author?.is_verified ||
+    post?.author?.verified ||
+    post?.is_verified ||
+    post?.verified
+  );
+
+  // Author ID
+  const authorId = safeUserId(author || post?.user || post?.author || { id: post?.user_id });
+
+  // Authentic story check - only show story ring/dots if user has active stories
+  const userHasStory = useMemo(() => {
+    if (typeof hasStory === 'boolean') return hasStory;
+    if (author?.has_story || author?.hasStory || post?.user?.has_story || post?.user?.hasStory) return true;
+    if (Array.isArray(stories) && stories.length > 0) {
+      return stories.some((s: any) => {
+        const sUid = Number(s?.user_id ?? s?.user?.id ?? 0);
+        return sUid > 0 && sUid === authorId;
+      });
+    }
+    return false;
+  }, [hasStory, author, post, stories, authorId]);
+
+  // Online status check
+  const isOnline = Boolean(
+    author?.is_online ||
+    author?.isOnline ||
+    post?.user?.is_online ||
+    post?.user?.isOnline
+  );
 
   // Video URL resolution
   const videoUrl =
@@ -107,7 +149,6 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
   const [isSaved, setIsSaved] = useState(false);
   const [showShareToast, setShowShareToast] = useState(false);
 
-  const authorId = safeUserId(author || post?.user);
   const authorName = author?.name || post?.user?.name || post?.author_name || 'Creator';
   const authorUsername = author?.username || post?.user?.username || authorName.toLowerCase().replace(/\s+/g, '_');
   const authorAvatar = avatarFrom(author || post?.user);
@@ -410,16 +451,36 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
       {/* 1. INSTAGRAM HEADER */}
       <div className="flex items-center justify-between px-3.5 py-3">
         <div className="flex items-center gap-3">
-          {/* Avatar with subtle Instagram-style ring */}
+          {/* Avatar with authentic story ring/dots only if user has active story */}
           <div
-            className="relative cursor-pointer p-[1.5px] rounded-full bg-gradient-to-tr from-[#F59E0B] via-[#EC4899] to-[#8B5CF6]"
-            onClick={() => onProfileClick(authorId)}
+            className={`relative cursor-pointer transition-transform active:scale-95 ${
+              userHasStory
+                ? 'p-[2px] rounded-full bg-gradient-to-tr from-[#F59E0B] via-[#EC4899] to-[#8B5CF6] ring-2 ring-[#0F172A]'
+                : 'rounded-full'
+            }`}
+            onClick={() => {
+              if (userHasStory && onStoryClick) {
+                onStoryClick(authorId);
+              } else {
+                onProfileClick(authorId);
+              }
+            }}
+            title={userHasStory ? `${authorName} has an active story` : authorName}
           >
             <img
               src={authorAvatar}
               alt={authorName}
-              className="w-9 h-9 rounded-full object-cover border-2 border-[#0F172A]"
+              className={`w-9 h-9 rounded-full object-cover ${
+                userHasStory ? 'border border-[#0F172A]' : 'border-2 border-[#1E293B]'
+              }`}
             />
+            {/* Real online status indicator */}
+            {isOnline && (
+              <span
+                className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#22C55E] border-2 border-[#0F172A] rounded-full shadow-sm"
+                title="Online now"
+              />
+            )}
           </div>
 
           <div className="flex flex-col leading-tight">
@@ -430,7 +491,13 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
               >
                 {authorName}
               </span>
-              <i className="fas fa-check-circle text-[#38BDF8] text-[12px]"></i>
+              {/* REAL verification tick only - NEVER faked */}
+              {isVerified && (
+                <i
+                  className="fas fa-check-circle text-[#1877F2] text-[13px]"
+                  title="Verified Account"
+                />
+              )}
               <span className="text-[#64748B] text-[13px]">•</span>
               <span className="text-[#94A3B8] text-[12.5px]">
                 {formatRelativeTime(post.created_at || post.timestamp)}

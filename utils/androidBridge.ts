@@ -116,10 +116,10 @@ export function initAndroidBridge(): void {
 
   console.log('📱 Initializing UNERA Android Native Bridge');
 
-  // 1. Configure Status Bar - Explicitly visible, Dark Navy theme, Light text/icons, DO NOT overlay webview
+  // 1. Configure Status Bar - Explicitly visible, Dark Navy theme, Light text/icons, Edge-to-edge overlay
   try {
     StatusBar.show().catch(() => {});
-    StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
+    StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
     StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
     StatusBar.setBackgroundColor({ color: '#050B18' }).catch(() => {});
   } catch (err) {

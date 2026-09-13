@@ -2512,7 +2512,7 @@ export const StoryReel: React.FC<StoryReelProps> = ({
   };
 
   return (
-    <div className="w-full flex gap-2.5 mb-5 overflow-x-auto pb-2 px-2 sm:px-0 scrollbar-hide">
+    <div className="w-full bg-[#0F172A] border-b-[8px] border-[#050B18] py-3.5 px-3 overflow-x-auto flex gap-2.5 scrollbar-hide">
       <div
         className="min-w-[110px] sm:min-w-[135px] h-[200px] sm:h-[240px] bg-[#0F172A] rounded-2xl shadow-sm overflow-hidden cursor-pointer relative group flex-shrink-0 border border-[#1E293B]"
         onClick={() => (currentUser ? onCreateStory?.() : onRequestLogin())}

@@ -105,7 +105,7 @@ export const SponsoredPostCard: React.FC<SponsoredPostCardProps> = ({
   const profileImage = ad.profile_image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(advertiserName)}&background=1877F2&color=fff`;
 
   return (
-    <div className="bg-[#0F172A] rounded-xl shadow-sm mb-4 overflow-hidden border border-[#1E293B]">
+    <div className="w-full bg-[#0F172A] border-b-[8px] border-[#050B18] overflow-hidden">
       {/* HEADER */}
       <div className="flex items-center justify-between p-3">
         <div className="flex items-center">

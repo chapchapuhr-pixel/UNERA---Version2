@@ -55,6 +55,11 @@ import { useLanguage } from './contexts/LanguageContext';
 import { buildImageUploadBundle } from './utils/imageCompression';
 import { resolveApiUrl } from './utils/api';
 import {
+  PostUploadProgressBanner,
+  PostUploadBottomPill,
+  PostUploadState,
+} from './components/PostUploadProgress';
+import {
   User,
   Post as PostType,
   Story,
@@ -3332,6 +3337,7 @@ const mixedFeedItems = useMemo(() => {
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
 
   const [showCreatePostModal, setShowCreatePostModal] = useState(false);
+  const [postUploadState, setPostUploadState] = useState<PostUploadState | null>(null);
   const [showCreateReelModal, setShowCreateReelModal] = useState(false);
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
@@ -8588,6 +8594,29 @@ const createPost = useCallback(
     let media_url: string | null = null;
     let media_type: string | null = null;
 
+    const hasPhotos = meta?.type === 'image' || (list.length > 0 && list.some(f => f.type.startsWith('image/')));
+    let previewUrl: string | undefined;
+    if (list.length > 0 && list[0].type.startsWith('image/')) {
+      try {
+        previewUrl = URL.createObjectURL(list[0]);
+      } catch (e) {
+        // ignore
+      }
+    } else if (meta?.nativeMediaUrls?.[0]) {
+      previewUrl = meta.nativeMediaUrls[0];
+    }
+
+    setPostUploadState({
+      isUploading: true,
+      progress: 15,
+      title: 'Uploading your post…',
+      secondaryStatus: hasPhotos
+        ? 'Please wait while your photos are being uploaded.'
+        : 'Publishing post to your timeline...',
+      previewUrl,
+      isSuccess: false,
+    });
+
     try {
       // ✅ CHECK FOR NATIVE UPLOAD FIRST
       if (meta?.nativeMediaMeta && meta.nativeMediaMeta.length > 0) {
@@ -8598,11 +8627,24 @@ const createPost = useCallback(
         media_meta = meta.nativeMediaMeta;
         media_url = media_urls[0] || null;
         media_type = media_types[0] || null;
+
+        setPostUploadState((prev) => prev ? ({
+          ...prev,
+          progress: 65,
+          secondaryStatus: 'Processing media attachments...',
+        }) : null);
       }
       // IMAGE POSTS - compress in browser
       else if (meta?.type === 'image' && list.length) {
+        setPostUploadState((prev) => prev ? ({
+          ...prev,
+          progress: 30,
+          secondaryStatus: 'Preparing and optimizing photos...',
+        }) : null);
+
+        let completedFiles = 0;
         const uploadedItems = await Promise.all(
-          list.map(async (file) => {
+          list.map(async (file, idx) => {
             const bundle = await buildImageUploadBundle(file);
             const form = new FormData();
             form.append('thumbnail', bundle.thumb);
@@ -8620,6 +8662,16 @@ const createPost = useCallback(
             if (!feed) {
               throw new Error('Image upload failed: missing feed URL');
             }
+
+            completedFiles++;
+            const pct = Math.min(85, 30 + Math.round((completedFiles / list.length) * 55));
+            setPostUploadState((prev) => prev ? ({
+              ...prev,
+              progress: pct,
+              secondaryStatus: list.length > 1
+                ? `Uploaded photo ${completedFiles} of ${list.length}...`
+                : 'Please wait while your photos are being uploaded.',
+            }) : null);
 
             return {
               thumb,
@@ -8643,6 +8695,12 @@ const createPost = useCallback(
       }
       // NON-IMAGE POSTS (videos, audio, etc.)
       else if (list.length) {
+        setPostUploadState((prev) => prev ? ({
+          ...prev,
+          progress: 40,
+          secondaryStatus: 'Uploading media files...',
+        }) : null);
+
         const ups = await Promise.all(list.map((f) => uploadToCloudflareR2(f)));
         media_urls = ups.map((u) => u.url).filter(Boolean);
         media_types = ups.map((u) => u.type).filter(Boolean);
@@ -8650,9 +8708,29 @@ const createPost = useCallback(
         media_type = media_types[0] ?? null;
       }
     } catch (error: any) {
+      setPostUploadState((prev) => prev ? ({
+        ...prev,
+        isUploading: false,
+        isSuccess: false,
+        error: error?.message || 'Upload error',
+        title: 'Upload failed',
+        secondaryStatus: error?.message || 'Failed to upload files. Please try again.',
+      }) : null);
+      setTimeout(() => {
+        setPostUploadState(null);
+        if (previewUrl) {
+          try { URL.revokeObjectURL(previewUrl); } catch (e) {}
+        }
+      }, 4000);
       setLoginError(`Failed to upload files: ${error?.message || 'Upload error'}`);
       return;
     }
+
+    setPostUploadState((prev) => prev ? ({
+      ...prev,
+      progress: 90,
+      secondaryStatus: 'Publishing post to your timeline...',
+    }) : null);
 
     const payload: any = {
       user_id: currentUser!.id,
@@ -8723,12 +8801,22 @@ const createPost = useCallback(
     setShowCreatePostModal(false);
     scheduleSilentRefresh();
 
-    // Show success toast
-    const toast = document.createElement('div');
-    toast.className = 'fixed bottom-24 left-1/2 -translate-x-1/2 bg-[#1877F2] text-white px-6 py-2 rounded-full font-bold shadow-lg animate-fade-in z-[300]';
-    toast.innerText = 'Post created successfully!';
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2000);
+    // Show clear success state with smooth completion
+    setPostUploadState((prev) => prev ? ({
+      ...prev,
+      isUploading: false,
+      isSuccess: true,
+      progress: 100,
+      title: 'Post uploaded successfully!',
+      secondaryStatus: 'Your post is now visible on your timeline.',
+    }) : null);
+
+    setTimeout(() => {
+      setPostUploadState(null);
+      if (previewUrl) {
+        try { URL.revokeObjectURL(previewUrl); } catch (e) {}
+      }
+    }, 2800);
   },
   [currentUser, requireAuth, scheduleSilentRefresh, selectedUserId]
 );
@@ -10210,34 +10298,13 @@ return (
           onChange={handleReelVideoSelected}
         />
 {view === 'home' && (
-  <div className="w-full pt-4 md:px-8 pb-12">
+  <div className="w-full pt-0 sm:pt-2 md:px-0 pb-12">
     {activeHashtag && (
       <div className="mb-3 px-4">
         {/* ... hashtag UI ... */}
       </div>
     )}
 
-    <StoryReel
-  stories={orderedStories}
-  onProfileClick={(id) => openProfile(id)}
-  onCreateStory={() => {
-    if (!requireAuth('Creating stories')) return;
-    setShowCreateStoryModal(true);
-  }}
-  onViewStory={openStoryViewer}
-  currentUser={currentUser}
-  onRequestLogin={() => setView('login')}
-  onFollow={followUser}
-  checkIsFollowing={checkIsFollowing}
-  followLoading={followLoading}
-  onFetchViewers={fetchStoryViewers}
-  onReaction={reactToStory}
-  onReply={replyToStory}
-  onToggleMute={() => setStoryMuted(!storyMuted)}
-  muted={storyMuted}
-  storyCreateLoading={storyCreateLoading}
-/>
-    
     {currentUser && (
       <CreatePost
         currentUser={currentUser}
@@ -10255,7 +10322,35 @@ return (
       />
     )}
 
-    <div className="space-y-2">
+    <StoryReel
+      stories={orderedStories}
+      onProfileClick={(id) => openProfile(id)}
+      onCreateStory={() => {
+        if (!requireAuth('Creating stories')) return;
+        setShowCreateStoryModal(true);
+      }}
+      onViewStory={openStoryViewer}
+      currentUser={currentUser}
+      onRequestLogin={() => setView('login')}
+      onFollow={followUser}
+      checkIsFollowing={checkIsFollowing}
+      followLoading={followLoading}
+      onFetchViewers={fetchStoryViewers}
+      onReaction={reactToStory}
+      onReply={replyToStory}
+      onToggleMute={() => setStoryMuted(!storyMuted)}
+      muted={storyMuted}
+      storyCreateLoading={storyCreateLoading}
+    />
+
+    {postUploadState && (
+      <PostUploadProgressBanner
+        uploadState={postUploadState}
+        onDismiss={() => setPostUploadState(null)}
+      />
+    )}
+
+    <div className="w-full">
       <MarketplaceContext.Provider value={{
         onViewProduct: (productId) => {
           const product = products.find(p => Number(p.id) === Number(productId));
@@ -11365,6 +11460,11 @@ feedLoadingMore={feedLoadingMore}
             <p className="text-[#94A3B8]">Analytics for ad #{adAnalyticsId}</p>
           </div>
         </div>
+      )}
+
+      {/* Floating Upload Progress Pill */}
+      {postUploadState && (
+        <PostUploadBottomPill uploadState={postUploadState} />
       )}
     </div>
   );

@@ -2866,7 +2866,7 @@ const FeedStoryCard: React.FC<FeedStoryCardProps> = ({ story, onOpen }) => {
   const reactionsCount = Number(story?.reactions_count || 0);
 
   return (
-    <div className="bg-[#0B1120] rounded-2xl border border-[#1E293B] shadow-sm overflow-hidden mb-4">
+    <div className="w-full bg-[#0F172A] border-b-[8px] border-[#050B18] overflow-hidden">
       <div className="px-4 pt-3 pb-2 flex items-center gap-3">
         <img
           src={authorImage}
@@ -3109,7 +3109,7 @@ export const GroupsYouMayJoinCard = memo(
 
     return (
       <div className="w-full">
-        <div className="bg-[#0F172A] border border-[#1E293B] rounded-2xl shadow-sm w-full p-4 mb-4">
+        <div className="bg-[#0F172A] w-full p-4">
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-[#F8FAFC] font-bold text-[20px]">{title}</h3>
             <div className="flex items-center gap-2">
@@ -3961,10 +3961,10 @@ const MediaGrid = memo(
 
     if (total === 0) return null;
 
-    // Single image layout
+    // Single image layout - edge-to-edge with natural aspect ratio
     if (total === 1) {
       return (
-        <div className="w-full bg-black">
+        <div className="w-full bg-[#050B18] overflow-hidden">
           <button
             type="button"
             onClick={(e) => {
@@ -3974,11 +3974,11 @@ const MediaGrid = memo(
                 0
               );
             }}
-            className="w-full block"
+            className="w-full block focus:outline-none"
           >
             <ProgressiveTileImage
               item={visible[0]}
-              className="w-full h-auto max-h-[650px] object-contain"
+              className="w-full h-auto max-h-[850px] object-cover sm:object-contain mx-auto block"
             />
           </button>
         </div>
@@ -5851,9 +5851,8 @@ export const Post = memo(
 
     return (
       <>
-        <div className="w-full relative mb-3 sm:mb-4 px-2 sm:px-0">
-          <div className="bg-[#0F172A] w-full overflow-hidden rounded-2xl border border-[#1E293B] shadow-sm">
-            {/* HEADER SECTION - Group Post vs Regular Post */}
+        <article className="w-full relative bg-[#0F172A] border-b-[8px] border-[#050B18]">
+          {/* HEADER SECTION - Group Post vs Regular Post */}
             {isGroupPost ? (
               <>
                 <GroupPostHeader
@@ -6052,7 +6051,7 @@ export const Post = memo(
 
             {p.link_preview && !mediaInfo.mediaUrl && !isMarketplace && (
               <div
-                className="mx-3 md:mx-4 mb-2 bg-[#0B1120] border border-[#1E293B] overflow-hidden cursor-pointer hover:bg-[#1E293B] transition-colors rounded-lg"
+                className="w-full mb-2.5 bg-[#0B1120] border-y border-[#1E293B]/70 overflow-hidden cursor-pointer hover:bg-[#141E33] transition-colors"
                 onClick={() =>
                   window.open(p.link_preview.url, '_blank', 'noopener noreferrer')
                 }
@@ -6484,8 +6483,7 @@ export const Post = memo(
                 </div>
               </>
             )}
-          </div>
-        </div>
+        </article>
 
         <ShareBottomSheet
           isOpen={showShareSheet}
@@ -6542,7 +6540,7 @@ export const Post = memo(
  * ✅ CREATE POST CARD
  * =========================
  */
- export const CreatePost: React.FC<{
+export const CreatePost: React.FC<{
   currentUser: User;
   onProfileClick: (id: number) => void;
   onClick: () => void;
@@ -6557,76 +6555,83 @@ export const Post = memo(
   onVideoClick,
   onCreateEventClick,
 }) => (
-  <div className="w-full mb-3 px-2 sm:px-0">
-    <div className="bg-[#0F172A] w-full p-3 sm:p-4 rounded-2xl border border-[#1E293B] shadow-sm">
-      <div className="flex items-center gap-2.5 mb-3">
-        <img
-          src={avatarFrom(currentUser)}
-          alt=""
-          className="w-10 h-10 rounded-xl object-cover cursor-pointer border border-[#1E293B]"
-          onClick={() => onProfileClick(safeUserId(currentUser))}
-        />
+  <div className="w-full bg-[#0F172A] border-b-[8px] border-[#050B18] p-3 sm:p-4">
+    <div className="flex items-center gap-2.5 mb-2.5">
+      <img
+        src={avatarFrom(currentUser)}
+        alt=""
+        className="w-10 h-10 rounded-full object-cover cursor-pointer border border-[#1E293B]"
+        onClick={() => onProfileClick(safeUserId(currentUser))}
+      />
 
-        <div
-          className="flex-1 bg-[#070D1D] hover:bg-[#141E33] border border-[#1E293B] hover:border-[#1877F2]/50 rounded-xl px-4 py-2.5 cursor-pointer flex items-center transition-all group"
-          onClick={onClick}
-        >
-          <span className="text-[#94A3B8] group-hover:text-[#F8FAFC] text-[15px] sm:text-[16px] truncate transition-colors">
-            What's on your mind,{' '}
-            {String((currentUser as any).name || '').split(' ')[0] || 'there'}?
-          </span>
-        </div>
+      <div
+        className="flex-1 bg-[#1E293B]/60 hover:bg-[#1E293B] border border-[#334155]/40 rounded-full px-4 py-2 cursor-pointer flex items-center transition-all group"
+        onClick={onClick}
+      >
+        <span className="text-[#94A3B8] group-hover:text-[#F8FAFC] text-[15px] sm:text-[16px] truncate transition-colors">
+          What's on your mind,{' '}
+          {String((currentUser as any).name || '').split(' ')[0] || 'there'}?
+        </span>
       </div>
 
-      <div className="border-t border-[#1E293B] pt-2 flex items-center justify-between gap-1">
-        {/* Live Video */}
-        <button
-          type="button"
-          className="flex items-center justify-center flex-1 gap-2 py-2 px-1 hover:bg-[#1E293B] rounded-xl cursor-pointer transition-colors focus:outline-none"
-          onClick={onClick}
-        >
-          <i className="fas fa-video text-[#1877F2] text-[18px] sm:text-[20px]"></i>
-          <span className="text-[#94A3B8] hover:text-[#F8FAFC] font-semibold text-[13px] sm:text-[14px] hidden sm:block transition-colors">
-            Live
-          </span>
-        </button>
+      <button
+        type="button"
+        onClick={onPhotoClick}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-[#1E293B] text-[#10B981] transition-colors"
+      >
+        <i className="fas fa-image text-[18px]"></i>
+        <span className="text-[14px] font-semibold text-[#CBD5E1] hidden xs:inline">Photo</span>
+      </button>
+    </div>
 
-        {/* Photo */}
-        <button
-          type="button"
-          className="flex items-center justify-center flex-1 gap-2 py-2 px-1 hover:bg-[#1E293B] rounded-xl cursor-pointer transition-colors focus:outline-none"
-          onClick={onPhotoClick}
-        >
-          <i className="fas fa-image text-[#10B981] text-[18px] sm:text-[20px]"></i>
-          <span className="text-[#94A3B8] hover:text-[#F8FAFC] font-semibold text-[13px] sm:text-[14px] hidden sm:block transition-colors">
-            Photo
-          </span>
-        </button>
+    <div className="border-t border-[#1E293B]/60 pt-2 flex items-center justify-between gap-1">
+      {/* Live Video */}
+      <button
+        type="button"
+        className="flex items-center justify-center flex-1 gap-2 py-2 px-1 hover:bg-[#1E293B] rounded-xl cursor-pointer transition-colors focus:outline-none"
+        onClick={onClick}
+      >
+        <i className="fas fa-video text-[#1877F2] text-[18px] sm:text-[20px]"></i>
+        <span className="text-[#94A3B8] hover:text-[#F8FAFC] font-semibold text-[13px] sm:text-[14px] hidden sm:block transition-colors">
+          Live
+        </span>
+      </button>
 
-        {/* Reel Video */}
-        <button
-          type="button"
-          className="flex items-center justify-center flex-1 gap-2 py-2 px-1 hover:bg-[#1E293B] rounded-xl cursor-pointer transition-colors focus:outline-none"
-          onClick={onVideoClick}
-        >
-          <i className="fas fa-camera text-[#F43F5E] text-[18px] sm:text-[20px]"></i>
-          <span className="text-[#94A3B8] hover:text-[#F8FAFC] font-semibold text-[13px] sm:text-[14px] hidden sm:block transition-colors">
-            Video
-          </span>
-        </button>
+      {/* Photo */}
+      <button
+        type="button"
+        className="flex items-center justify-center flex-1 gap-2 py-2 px-1 hover:bg-[#1E293B] rounded-xl cursor-pointer transition-colors focus:outline-none"
+        onClick={onPhotoClick}
+      >
+        <i className="fas fa-image text-[#10B981] text-[18px] sm:text-[20px]"></i>
+        <span className="text-[#94A3B8] hover:text-[#F8FAFC] font-semibold text-[13px] sm:text-[14px] hidden sm:block transition-colors">
+          Photo
+        </span>
+      </button>
 
-        {/* Create Event */}
-        <button
-          type="button"
-          className="flex items-center justify-center flex-1 gap-2 py-2 px-1 hover:bg-[#1E293B] rounded-xl cursor-pointer transition-colors focus:outline-none"
-          onClick={onCreateEventClick}
-        >
-          <i className="fas fa-calendar-alt text-[#F59E0B] text-[18px] sm:text-[20px]"></i>
-          <span className="text-[#94A3B8] hover:text-[#F8FAFC] font-semibold text-[13px] sm:text-[14px] hidden sm:block transition-colors">
-            Event
-          </span>
-        </button>
-      </div>
+      {/* Reel Video */}
+      <button
+        type="button"
+        className="flex items-center justify-center flex-1 gap-2 py-2 px-1 hover:bg-[#1E293B] rounded-xl cursor-pointer transition-colors focus:outline-none"
+        onClick={onVideoClick}
+      >
+        <i className="fas fa-camera text-[#F43F5E] text-[18px] sm:text-[20px]"></i>
+        <span className="text-[#94A3B8] hover:text-[#F8FAFC] font-semibold text-[13px] sm:text-[14px] hidden sm:block transition-colors">
+          Video
+        </span>
+      </button>
+
+      {/* Create Event */}
+      <button
+        type="button"
+        className="flex items-center justify-center flex-1 gap-2 py-2 px-1 hover:bg-[#1E293B] rounded-xl cursor-pointer transition-colors focus:outline-none"
+        onClick={onCreateEventClick}
+      >
+        <i className="fas fa-calendar-alt text-[#F59E0B] text-[18px] sm:text-[20px]"></i>
+        <span className="text-[#94A3B8] hover:text-[#F8FAFC] font-semibold text-[13px] sm:text-[14px] hidden sm:block transition-colors">
+          Event
+        </span>
+      </button>
     </div>
   </div>
 );
@@ -8770,7 +8775,7 @@ export const Feed = memo(({
   }, [triggerLoadMore]);
 
   return (
-    <div className="space-y-2">
+    <div className="w-full flex flex-col">
       {paginatedFeedItems.map((item, index) => {
         if (item.kind === "story") {
           return (

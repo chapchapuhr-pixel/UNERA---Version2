@@ -1449,7 +1449,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({
               const isAuthor = currentUser && Number(post.user_id) === Number(currentUser.id);
               
               return (
-                <div key={post.id} className="relative mb-4">
+                <div key={post.id} className="relative">
                   {/* Three-dot menu for post author */}
                   {isAuthor && (
                     <div className="absolute top-4 right-4 z-10">

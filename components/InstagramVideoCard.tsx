@@ -155,38 +155,72 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
   const authorUsername = author?.username || post?.user?.username || authorName.toLowerCase().replace(/\s+/g, '_');
   const authorAvatar = avatarFrom(author || post?.user);
 
-  // Auto-play / pause when visible via IntersectionObserver (controlled by autoplay prop)
+  // Unique video ID for global single-playback coordination
+  const cardVideoId = useMemo(() => {
+    return String(reelId || post?.reel_id || post?.id || post?.video_url || Math.random());
+  }, [reelId, post?.reel_id, post?.id, post?.video_url]);
+
+  // Global single-video playback coordinator: pause immediately if another video starts
+  useEffect(() => {
+    const handleGlobalVideoPlay = (e: Event) => {
+      const customEvent = e as CustomEvent<{ videoId: string }>;
+      if (customEvent.detail?.videoId && customEvent.detail.videoId !== cardVideoId) {
+        if (videoRef.current && !videoRef.current.paused) {
+          videoRef.current.pause();
+          setIsPlaying(false);
+        }
+      }
+    };
+
+    window.addEventListener('unera-video-play', handleGlobalVideoPlay);
+    return () => {
+      window.removeEventListener('unera-video-play', handleGlobalVideoPlay);
+    };
+  }, [cardVideoId]);
+
+  // Auto-play / pause when visible via IntersectionObserver:
+  // - In Feed (autoplay=false): Automatically stops playing when user scrolls away to other posts
+  // - In Videos page (autoplay=true): Plays active video in center, stops previous when scrolled away
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
-    if (!autoplay) {
-      if (videoRef.current) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      }
-      return;
-    }
-
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (videoRef.current) {
-            if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-              videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
-            } else {
+          if (!videoRef.current) return;
+
+          if (autoplay) {
+            // Videos page feed: auto-play when centered
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+              window.dispatchEvent(
+                new CustomEvent('unera-video-play', { detail: { videoId: cardVideoId } })
+              );
+              videoRef.current
+                .play()
+                .then(() => setIsPlaying(true))
+                .catch(() => {});
+            } else if (!entry.isIntersecting || entry.intersectionRatio < 0.45) {
               videoRef.current.pause();
               setIsPlaying(false);
+            }
+          } else {
+            // Home Feed: if user was playing and scrolls away, STOP automatically
+            if (!entry.isIntersecting || entry.intersectionRatio < 0.25) {
+              if (!videoRef.current.paused) {
+                videoRef.current.pause();
+                setIsPlaying(false);
+              }
             }
           }
         });
       },
-      { threshold: 0.5 }
+      { threshold: [0, 0.25, 0.45, 0.6, 0.8] }
     );
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [autoplay]);
+  }, [autoplay, cardVideoId]);
 
   // Update progress bar
   const handleTimeUpdate = () => {
@@ -202,7 +236,14 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
     if (!videoRef.current) return;
 
     if (videoRef.current.paused) {
-      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      // Broadcast to pause any other playing videos so only one plays
+      window.dispatchEvent(
+        new CustomEvent('unera-video-play', { detail: { videoId: cardVideoId } })
+      );
+      videoRef.current
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {});
     } else {
       videoRef.current.pause();
       setIsPlaying(false);
@@ -536,21 +577,22 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
             </button>
           )}
 
-          {/* Watch in Reels button */}
+          {/* Watch in Videos button */}
           <button
             onClick={() => onVideoClick?.(post)}
-            title="Watch in Reels"
+            title="Watch in Videos"
             className="flex items-center gap-1.5 bg-[#1E293B] hover:bg-[#334155] text-[#38BDF8] text-xs font-semibold px-2.5 py-1 rounded-md transition-colors"
           >
             <i className="fas fa-play text-[10px]"></i>
-            <span className="hidden xs:inline">Reels</span>
+            <span className="hidden xs:inline">Videos</span>
+            <i className="fas fa-chevron-right text-[10px] ml-0.5"></i>
           </button>
         </div>
       </div>
 
-      {/* 2. INSTAGRAM VIDEO MEDIA CONTAINER */}
+      {/* 2. INSTAGRAM VIDEO MEDIA CONTAINER - FILLS ALL CARD WIDTH */}
       <div
-        className="relative w-full bg-black flex items-center justify-center cursor-pointer overflow-hidden max-h-[640px] aspect-[4/5] sm:aspect-[9/16] max-w-full"
+        className="relative w-full bg-black flex items-center justify-center cursor-pointer overflow-hidden min-h-[380px] max-h-[640px] aspect-[4/5] sm:aspect-[1/1] md:aspect-[4/5] max-w-full"
         onClick={handleVideoAreaClick}
       >
         <video
@@ -561,7 +603,7 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
           muted={isMuted}
           preload="metadata"
           onTimeUpdate={handleTimeUpdate}
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover object-center"
         />
 
         {/* Play / Pause Ripple Indicator */}
@@ -777,7 +819,7 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
             <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#1E293B]">
               <div className="flex items-center gap-2">
                 <i className="fas fa-comments text-[#38BDF8]"></i>
-                <h3 className="font-bold text-[16px] text-[#F8FAFC]">Reel Discussions</h3>
+                <h3 className="font-bold text-[16px] text-[#F8FAFC]">Video Discussions</h3>
                 <span className="text-xs bg-[#1E293B] text-[#94A3B8] px-2 py-0.5 rounded-full">
                   {commentsCount}
                 </span>
@@ -801,7 +843,7 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
                 <div className="flex flex-col items-center justify-center h-48 text-[#94A3B8] text-center">
                   <i className="far fa-comment-dots text-3xl text-[#475569] mb-2"></i>
                   <p className="text-sm font-medium text-[#F8FAFC]">No comments yet</p>
-                  <p className="text-xs text-[#64748B]">Be the first to start the discussion on this reel!</p>
+                  <p className="text-xs text-[#64748B]">Be the first to start the discussion on this video!</p>
                 </div>
               ) : (
                 comments.map((comment) => {
@@ -869,7 +911,7 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
               />
               <input
                 type="text"
-                placeholder="Share your thoughts on this reel…"
+                placeholder="Share your thoughts on this video…"
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 className="flex-1 bg-[#1E293B] border border-[#334155] rounded-full px-4 py-2 text-sm text-[#F8FAFC] placeholder-[#64748B] outline-none focus:border-[#1877F2]"

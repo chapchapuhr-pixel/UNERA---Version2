@@ -10535,6 +10535,7 @@ return (
     stories={safeArray(orderedStories)}
     currentUser={currentUser}
     initialVideoId={selectedReelId}
+    onInitialScrolled={() => setSelectedReelId(null)}
     onPostVideoClick={handleVideoClickFromCreate}
     onProfileClick={(id) => openProfile(id)}
     onStoryClick={(id) => openProfile(id)}

@@ -47,7 +47,7 @@ export const MenuOverlay: React.FC<MenuOverlayProps> = ({
     { id: 'groups', title: 'Groups', icon: 'fas fa-users', color: '#38BDF8' },
     { id: 'music', title: 'UNERA Music', icon: 'fas fa-music', color: '#1877F2' },
     { id: 'tools', title: 'UNERA Tools', icon: 'fas fa-briefcase', color: '#2DD4BF' },
-    { id: 'reels', title: 'Reels', icon: 'fas fa-clapperboard', color: '#F43F5E' },
+    { id: 'reels', title: 'Videos', icon: 'fas fa-play-circle', color: '#1877F2' },
     { id: 'birthdays', title: 'Birthdays', icon: 'fas fa-birthday-cake', color: '#FBBF24' },
     { id: 'memories', title: 'Memories', icon: 'fas fa-history', color: '#818CF8' },
     { id: 'story-feed', title: 'Story Feed', icon: 'fas fa-layer-group', color: '#34D399' },
@@ -581,7 +581,7 @@ export const Header: React.FC<HeaderProps> = ({
     const allFeatures = [
       { id: 'marketplace', title: 'Marketplace', icon: 'fas fa-store', color: '#10B981', desc: 'Browse and sell items', action: () => onMarketplaceClick() },
       { id: 'groups', title: 'Groups', icon: 'fas fa-users', color: '#1877F2', desc: 'Discover and join communities', action: () => onGroupsClick() },
-      { id: 'reels', title: 'Reels', icon: 'fas fa-video', color: '#F43F5E', desc: 'Watch trending short reels & videos', action: () => onReelsClick() },
+      { id: 'reels', title: 'Videos', icon: 'fas fa-play-circle', color: '#1877F2', desc: 'Watch trending videos & reels', action: () => onReelsClick() },
       { id: 'music', title: 'UNERA Music', icon: 'fas fa-music', color: '#1877F2', desc: 'Listen to songs and audio tracks', action: () => onNavigate('music') },
       { id: 'ads', title: 'Ad Dashboard', icon: 'fas fa-chart-line', color: '#06B6D4', desc: 'Create and track ads', action: () => onAdsClick() },
       { id: 'events', title: 'Events', icon: 'fas fa-calendar-alt', color: '#EC4899', desc: 'Find local events and gatherings', action: () => onNavigate('events') },
@@ -1101,7 +1101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'story-feed', label: 'Story Feed', icon: 'fas fa-layer-group', color: '#34D399', onClick: onStoryFeedClick },
     { id: 'groups', label: 'Groups', icon: 'fas fa-users', color: '#38BDF8', onClick: onGroupsClick },
     { id: 'marketplace', label: 'Marketplace', icon: 'fas fa-store', color: '#1877F2', onClick: onMarketplaceClick },
-    { id: 'reels', label: 'Reels', icon: 'fas fa-clapperboard', color: '#F43F5E', onClick: onReelsClick },
+    { id: 'reels', label: 'Videos', icon: 'fas fa-play-circle', color: '#1877F2', onClick: onReelsClick },
     { id: 'events', label: 'Events', icon: 'fas fa-calendar-alt', color: '#2563EB', onClick: onEventsClick },
     { id: 'ads', label: 'Ad Dashboard', icon: 'fas fa-chart-line', color: '#10B981', onClick: onAdsClick },
   ];

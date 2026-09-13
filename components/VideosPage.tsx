@@ -9,6 +9,7 @@ interface VideosPageProps {
   stories?: any[];
   currentUser: any;
   initialVideoId?: number | string | null;
+  onInitialScrolled?: () => void;
   onPostVideoClick?: () => void;
   onProfileClick: (userId: number) => void;
   onStoryClick?: (userId: number) => void;
@@ -28,6 +29,7 @@ export const VideosPage: React.FC<VideosPageProps> = ({
   stories = [],
   currentUser,
   initialVideoId,
+  onInitialScrolled,
   onProfileClick,
   onStoryClick,
   onReact,
@@ -38,6 +40,7 @@ export const VideosPage: React.FC<VideosPageProps> = ({
 }) => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrolledVideoIdRef = useRef<string | number | null>(null);
 
   // Extract, normalize, and unify ALL videos from feed posts and reels
   const allVideos = useMemo(() => {
@@ -114,9 +117,12 @@ export const VideosPage: React.FC<VideosPageProps> = ({
     return list;
   }, [posts, reels, users]);
 
-  // Jump to specific video when initialVideoId is provided
+  // Jump to specific video when user enters with initialVideoId from feed
+  // Respects the user's manual scrolling: only jumps once upon arrival and never snaps back
   useEffect(() => {
     if (!initialVideoId || allVideos.length === 0) return;
+    if (scrolledVideoIdRef.current === initialVideoId) return;
+
     const targetId = String(initialVideoId);
     const index = allVideos.findIndex(
       (v) =>
@@ -126,6 +132,7 @@ export const VideosPage: React.FC<VideosPageProps> = ({
     );
 
     if (index !== -1) {
+      scrolledVideoIdRef.current = initialVideoId;
       const targetPage = Math.floor(index / VIDEOS_PER_PAGE) + 1;
       setCurrentPage(targetPage);
 
@@ -139,11 +146,12 @@ export const VideosPage: React.FC<VideosPageProps> = ({
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-      }, 200);
+        onInitialScrolled?.();
+      }, 150);
 
       return () => clearTimeout(timer);
     }
-  }, [initialVideoId, allVideos]);
+  }, [initialVideoId, allVideos.length, onInitialScrolled]);
 
   // Pagination calculation: 15 videos per page
   const totalVideos = allVideos.length;

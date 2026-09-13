@@ -1886,7 +1886,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
   return (
     <div className="fixed inset-0 z-[250] bg-[#050B18] animate-fade-in flex items-center justify-center">
       <button
-        className="absolute top-4 right-4 z-[300] cursor-pointer w-10 h-10 flex items-center justify-center bg-[#0F172A]/80 hover:bg-[#1E293B] border border-[#1E293B] rounded-full transition-colors"
+        className="absolute top-[max(env(safe-area-inset-top,16px),16px)] right-4 z-[300] cursor-pointer w-10 h-10 flex items-center justify-center bg-[#0F172A]/80 hover:bg-[#1E293B] border border-[#1E293B] rounded-full transition-colors"
         onClick={(e) => {
           e.stopPropagation();
           onClose();
@@ -1933,7 +1933,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
           <i className="fas fa-chevron-right text-white/90"></i>
         </button>
 
-        <div className="absolute top-0 left-0 right-0 p-3 z-30 flex gap-1.5">
+        <div className="absolute top-0 left-0 right-0 pt-[max(env(safe-area-inset-top,0px),8px)] px-3 z-30 flex gap-1.5">
           {userStories.map((_, i) => (
             <div key={i} className="h-1 bg-white/20 flex-1 rounded-full overflow-hidden">
               <div
@@ -1949,7 +1949,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
         </div>
 
         <div 
-          className="absolute top-0 left-0 right-0 p-4 pt-6 z-30 flex items-center justify-between bg-gradient-to-b from-[#0B1120]/90 via-[#0B1120]/40 to-transparent" 
+          className="absolute top-0 left-0 right-0 px-4 pt-[calc(max(env(safe-area-inset-top,0px),8px)+16px)] pb-4 z-30 flex items-center justify-between bg-gradient-to-b from-[#0B1120]/90 via-[#0B1120]/40 to-transparent" 
           data-no-nav="true"
         >
           <div className="flex items-center gap-3">
@@ -2180,7 +2180,7 @@ export const StoryViewer: React.FC<StoryViewerProps> = ({
 
         {/* Horizontal Bottom Actions - React, Discuss, Share */}
         <div 
-          className="absolute bottom-0 left-0 right-0 p-3 z-20 bg-gradient-to-t from-[#0B1120] via-[#0B1120]/80 to-transparent pt-10"
+          className="absolute bottom-0 left-0 right-0 p-3 pb-[max(env(safe-area-inset-bottom,0px),12px)] z-20 bg-gradient-to-t from-[#0B1120] via-[#0B1120]/80 to-transparent pt-10"
           data-no-nav="true"
         >
           {/* Reaction row with counts */}

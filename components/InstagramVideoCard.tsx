@@ -819,7 +819,7 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
             <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#1E293B]">
               <div className="flex items-center gap-2">
                 <i className="fas fa-comments text-[#38BDF8]"></i>
-                <h3 className="font-bold text-[16px] text-[#F8FAFC]">Video Discussions</h3>
+                <h3 className="font-bold text-[16px] text-[#F8FAFC]">Video Comments</h3>
                 <span className="text-xs bg-[#1E293B] text-[#94A3B8] px-2 py-0.5 rounded-full">
                   {commentsCount}
                 </span>
@@ -837,7 +837,7 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
               {isLoadingComments ? (
                 <div className="flex flex-col items-center justify-center h-48 text-[#94A3B8]">
                   <i className="fas fa-spinner fa-spin text-2xl text-[#1877F2] mb-2"></i>
-                  <span className="text-sm">Loading discussions…</span>
+                  <span className="text-sm">Loading comments…</span>
                 </div>
               ) : comments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-[#94A3B8] text-center">

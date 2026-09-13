@@ -11208,7 +11208,14 @@ return (
           setShowCreatePostModal(false);
           setShowCreateEventModal(true);
         }}
-        onVideoClick={handleVideoClickFromCreate}
+        onPhotoClick={() => {
+          setShowCreatePostModal(false);
+          handlePhotoClick();
+        }}
+        onVideoClick={() => {
+          setShowCreatePostModal(false);
+          handleVideoClickFromCreate();
+        }}
       />
     )}
 

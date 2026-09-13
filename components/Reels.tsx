@@ -1170,7 +1170,7 @@ const ReelCommentsSheet: React.FC<{
         {/* Header */}
         <div className="px-4 pb-3 border-b border-white/10 flex justify-between items-center bg-[#18191A] shrink-0">
           <span className="text-[#E4E6EB] font-black text-[15px] uppercase tracking-[2px]">
-            {comments.length} {replyTo ? 'Replies' : 'Discussions'}
+            {comments.length} {replyTo ? 'Replies' : 'Comments'}
           </span>
           {replyTo && (
             <button 

@@ -3979,7 +3979,7 @@ const MediaGrid = memo(
           >
             <ProgressiveTileImage
               item={visible[0]}
-              className="w-full h-auto max-h-[850px] object-cover sm:object-contain mx-auto block"
+              className="w-full h-auto max-h-[850px] object-cover mx-auto block"
             />
           </button>
         </div>
@@ -6688,6 +6688,7 @@ export const CreatePostModal = memo(
     onClose,
     onCreatePost,
     onCreateEventClick,
+    onPhotoClick,
     onVideoClick,
   }: {
     currentUser: User;
@@ -6711,6 +6712,7 @@ export const CreatePostModal = memo(
       }
     ) => void;
     onCreateEventClick?: () => void;
+    onPhotoClick?: () => void;
     onVideoClick?: () => void;
   }) => {
     const [view, setView] = useState<'main' | 'tag' | 'feeling' | 'location'>('main');
@@ -6832,11 +6834,19 @@ export const CreatePostModal = memo(
 
     // ✅ Photo picker - works in app and web
     const handleNativePhotoClick = () => {
+      if (onPhotoClick) {
+        onPhotoClick();
+        return;
+      }
       fileInputRef.current?.click();
     };
 
     // ✅ Video picker - works in app and web
     const handleNativeVideoClick = () => {
+      if (onVideoClick) {
+        onVideoClick();
+        return;
+      }
       videoInputRef.current?.click();
     };
 

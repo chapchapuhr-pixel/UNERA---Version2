@@ -1378,7 +1378,16 @@ export const UserProfile: React.FC<UserProfileProps> = ({
                 input.click();
               }}
               onVideoClick={() => {
-                console.log('Open video recorder');
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'video/*';
+                input.onchange = (e) => {
+                  const files = Array.from((e.target as HTMLInputElement).files || []);
+                  if (files.length > 0) {
+                    onCreatePost('', files, { type: 'video' });
+                  }
+                };
+                input.click();
               }}
             />
             {showCreatePostModal && (

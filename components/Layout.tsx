@@ -216,6 +216,7 @@ export interface HeaderProps {
   onBack?: () => void;
   currentView?: string;
   onCreatePostClick?: () => void;
+  onSearchClick?: () => void;
 }
 
 // ==================== BOTTOM NAVIGATION COMPONENT ====================
@@ -420,6 +421,7 @@ export const Header: React.FC<HeaderProps> = ({
   onBack,
   currentView,
   onCreatePostClick,
+  onSearchClick,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -668,7 +670,13 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {/* 1. Search */}
             <button
-              onClick={() => setShowSearchOverlay(true)}
+              onClick={() => {
+                if (onSearchClick) {
+                  onSearchClick();
+                } else {
+                  setShowSearchOverlay(true);
+                }
+              }}
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#0F172A] hover:bg-[#1E293B] border border-[#1E293B] text-[#94A3B8] hover:text-[#F8FAFC] flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none"
               aria-label="Search"
               title="Search"

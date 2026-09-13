@@ -40,6 +40,7 @@ import { CallScreen } from './components/CallScreen';
 import Recorder from './components/Recorder';
 import { ReelCameraCreator } from './components/Reels';
 import { NotificationsPage } from './components/NotificationsPage';
+import { SearchPage } from './components/SearchPage';
 import Dashboard from './components/Dashboard';
 import AdCreator from './components/AdCreator';
 import AdsManager from './components/AdsManager';
@@ -8695,17 +8696,27 @@ const createPost = useCallback(
       }
       // NON-IMAGE POSTS (videos, audio, etc.)
       else if (list.length) {
+        const isVideo = meta?.type === 'video' || list.some((f) => f.type.startsWith('video/'));
         setPostUploadState((prev) => prev ? ({
           ...prev,
           progress: 40,
-          secondaryStatus: 'Uploading media files...',
+          secondaryStatus: isVideo ? 'Uploading and processing video...' : 'Uploading media files...',
         }) : null);
 
         const ups = await Promise.all(list.map((f) => uploadToCloudflareR2(f)));
         media_urls = ups.map((u) => u.url).filter(Boolean);
         media_types = ups.map((u) => u.type).filter(Boolean);
         media_url = media_urls[0] ?? null;
-        media_type = media_types[0] ?? null;
+        media_type = isVideo ? 'video' : (media_types[0] ?? null);
+
+        if (isVideo && media_url) {
+          media_meta = [{
+            thumb: media_url,
+            feed: media_url,
+            full: media_url,
+            type: 'video',
+          }];
+        }
       }
     } catch (error: any) {
       setPostUploadState((prev) => prev ? ({
@@ -8726,6 +8737,42 @@ const createPost = useCallback(
       return;
     }
 
+    const isVideoPost = media_type === 'video' || meta?.type === 'video' || (list.length > 0 && list.some((f) => f.type.startsWith('video/')));
+    let attachedReelId: number | null = null;
+
+    // Attach Reels endpoints for video posting
+    if (isVideoPost && media_url && currentUser) {
+      setPostUploadState((prev) => prev ? ({
+        ...prev,
+        progress: 75,
+        secondaryStatus: 'Attaching reel endpoints & interactions...',
+      }) : null);
+
+      try {
+        const reelFormData = new FormData();
+        reelFormData.append('caption', trimmed);
+        reelFormData.append('video_url', media_url);
+        reelFormData.append('thumbnail_url', media_meta[0]?.thumb || media_url);
+        reelFormData.append('user_id', String(currentUser.id));
+        if (meta?.visibility) reelFormData.append('visibility', meta.visibility);
+
+        const reelRes = await apiFetch('/api/reels', {
+          method: 'POST',
+          body: reelFormData,
+        });
+
+        const rId = reelRes?.reel?.id || reelRes?.id;
+        if (rId) {
+          attachedReelId = Number(rId);
+          if (reelRes?.reel) {
+            setReels((prev) => [reelRes.reel, ...safeArray(prev)]);
+          }
+        }
+      } catch (reelErr) {
+        console.warn('Reels endpoint attachment:', reelErr);
+      }
+    }
+
     setPostUploadState((prev) => prev ? ({
       ...prev,
       progress: 90,
@@ -8736,7 +8783,8 @@ const createPost = useCallback(
       user_id: currentUser!.id,
       content: trimmed,
       media_url,
-      media_type,
+      media_type: isVideoPost ? 'video' : media_type,
+      reel_id: attachedReelId || undefined,
       media_urls: media_urls.length ? media_urls : undefined,
       media_types: media_types.length ? media_types : undefined,
       media_meta: media_meta.length ? media_meta : undefined,
@@ -8747,7 +8795,7 @@ const createPost = useCallback(
       background: meta?.background,
       link_preview: meta?.linkPreview,
       feed_key: `post:${Date.now()}`,
-      type: (() => {
+      type: isVideoPost ? 'video' : (() => {
         const t = media_type || media_types[0] || null;
         if (!t) return meta?.type || 'text';
         if (typeof t === 'string' && t.startsWith('image')) return 'image';
@@ -8957,13 +9005,18 @@ const createPost = useCallback(
   }, [requireAuth]);
 
   const handleVideoClickFromCreate = useCallback(() => {
-  if (!requireAuth('Creating videos')) return;
-  if (isUneraNativeApp()) {
-    const opened = openNativeVideoPicker();
-    if (opened) return;
-  }
-  reelVideoInputRef.current?.click();
-}, [requireAuth]);
+    if (!requireAuth('Creating videos')) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'video/*';
+    input.onchange = (e) => {
+      const files = Array.from((e.target as HTMLInputElement).files || []);
+      if (files.length > 0) {
+        createPost('', files, { type: 'video' });
+      }
+    };
+    input.click();
+  }, [requireAuth, createPost]);
 
 const handleReelVideoSelected = useCallback(
   (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -10274,6 +10327,7 @@ return (
         if (!requireAuth('Creating posts')) return;
         setShowCreatePostModal(true);
       }}
+      onSearchClick={() => navigateTo('search')}
     />
 
     <div className="flex justify-center w-full max-w-[1920px] mx-auto relative flex-1 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]">
@@ -10938,6 +10992,33 @@ feedLoadingMore={feedLoadingMore}
     stickyHeader
   />
 )}
+
+        {view === 'search' && (
+          <SearchPage
+            currentUser={currentUser}
+            users={users}
+            posts={posts}
+            reels={reels}
+            groups={groups}
+            marketplaceItems={products}
+            onProfileClick={(id) => openProfile(id)}
+            onOpenGroup={(groupId) => openGroup(groupId)}
+            onBack={() => navigateTo('home')}
+            onFollow={followUser}
+            onVideoClick={(reel) => {
+              setSelectedReelId(reel.id);
+              navigateTo('reels');
+            }}
+            onPostClick={() => {
+              navigateTo('home');
+            }}
+            onViewProduct={(productId) => {
+              const prod = products.find((p) => p.id === productId);
+              if (prod) setActiveProduct(prod);
+              navigateTo('marketplace');
+            }}
+          />
+        )}
 
         {view === 'ads' && currentUser && (
           <div className="p-4 md:p-8 max-w-7xl mx-auto w-full">

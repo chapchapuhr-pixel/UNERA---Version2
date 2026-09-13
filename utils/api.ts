@@ -66,3 +66,57 @@ export const resolveApiUrl = (url: string): string => {
 
   return url;
 };
+
+/**
+ * Robust API fetch wrapper supporting both web and native capacitor runtimes.
+ */
+export const apiFetch = async (url: string, options: RequestInit = {}): Promise<any> => {
+  const targetUrl = resolveApiUrl(url);
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('unera_token') : null;
+  const headers: HeadersInit = {
+    Accept: 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers || {}),
+  };
+
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  if (!isFormData) {
+    headers['Content-Type'] = (headers['Content-Type'] as string) || 'application/json';
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+  try {
+    const res = await fetch(targetUrl, { ...options, headers, signal: controller.signal });
+    const contentType = res.headers.get('content-type') || '';
+    let data: any = null;
+
+    try {
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = { error: text.startsWith('<') ? `HTTP ${res.status}` : text };
+        }
+      }
+    } catch (e: any) {
+      data = { error: e?.message || 'Failed to parse response' };
+    }
+
+    if (!res.ok) {
+      const msg =
+        typeof data?.error === 'string' && !data.error.startsWith('<')
+          ? data.error
+          : data?.message || `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+
+    return data;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};

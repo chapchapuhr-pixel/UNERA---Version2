@@ -232,6 +232,81 @@ function apiDevPlugin(): Plugin {
           return res.end(JSON.stringify([]));
         }
 
+        if (pathname === '/api/upload') {
+          res.statusCode = 200;
+          const mockSampleVideo = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
+          const mockThumb = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80';
+          return res.end(
+            JSON.stringify({
+              success: true,
+              url: mockSampleVideo,
+              media_type: 'video',
+              media_urls: {
+                thumb: mockThumb,
+                feed: mockSampleVideo,
+                full: mockSampleVideo,
+              },
+              uploaded: {
+                thumbnail: { url: mockThumb },
+                feed: { url: mockSampleVideo },
+                original: { url: mockSampleVideo },
+              },
+            })
+          );
+        }
+
+        if (pathname === '/api/reels' && req.method === 'POST') {
+          res.statusCode = 201;
+          return res.end(
+            JSON.stringify({
+              success: true,
+              reel: {
+                id: Date.now(),
+                user_id: 1,
+                video_url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+                thumbnail_url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80',
+                caption: 'Shared Reel',
+                song_name: 'Original Sound',
+                views: 1,
+                shares: 0,
+                created_at: new Date().toISOString(),
+              },
+            })
+          );
+        }
+
+        if (pathname.includes('/api/reels/') && pathname.endsWith('/react')) {
+          res.statusCode = 200;
+          return res.end(JSON.stringify({ success: true, reactions: { love: 1 }, my_reaction: 'love' }));
+        }
+
+        if (pathname.includes('/api/reels/') && pathname.endsWith('/share')) {
+          res.statusCode = 200;
+          return res.end(JSON.stringify({ success: true, shares: 1 }));
+        }
+
+        if (pathname === '/api/reel-likes') {
+          res.statusCode = 200;
+          return res.end(JSON.stringify({ success: true, liked: true, count: 1 }));
+        }
+
+        if (pathname === '/api/reel-comments') {
+          res.statusCode = 200;
+          if (req.method === 'POST') {
+            return res.end(
+              JSON.stringify({
+                success: true,
+                comment: {
+                  id: Date.now(),
+                  text: 'Awesome video!',
+                  created_at: new Date().toISOString(),
+                },
+              })
+            );
+          }
+          return res.end(JSON.stringify({ success: true, comments: [] }));
+        }
+
         if (pathname === '/api/users') {
           res.statusCode = 200;
           return res.end(JSON.stringify([]));

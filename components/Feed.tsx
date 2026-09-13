@@ -34,6 +34,7 @@ import {
   addCachedComment,
   updateCachedComment,
 } from '../utils/dataCache';
+import { InstagramVideoCard } from './InstagramVideoCard';
 //====================TYPE DEFINITION =============
 export type FeedItem =
   | { kind: 'post'; data: any; created_at?: string }
@@ -5849,6 +5850,35 @@ export const Post = memo(
       }
     };
 
+    if (
+      !isGroupPost &&
+      !isMarketplace &&
+      (isVideoPost(p) || (videoMedia.length > 0 && !imageMedia.length) || p.media_type === 'video' || p.type === 'video')
+    ) {
+      return (
+        <article className="w-full relative bg-[#0F172A] border-b-[8px] border-[#050B18]">
+          <InstagramVideoCard
+            post={p}
+            author={a}
+            currentUser={currentUser}
+            users={users}
+            onProfileClick={onProfileClick}
+            onReact={(postItem, rType) => onReact(post, rType)}
+            onShare={(postId, newCount) => {
+              setShareCount(newCount);
+              onShare(postId, newCount);
+            }}
+            onVideoClick={() => onVideoClick(post)}
+            onDelete={onDelete}
+            onEdit={onEdit}
+            isFollowing={isFollowing}
+            onFollow={onFollow}
+            onHashtagClick={onHashtagClick}
+          />
+        </article>
+      );
+    }
+
     return (
       <>
         <article className="w-full relative bg-[#0F172A] border-b-[8px] border-[#050B18]">
@@ -6697,6 +6727,7 @@ export const CreatePostModal = memo(
     const searchTimeout = useRef<any>(null);
     const previewTimeout = useRef<any>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const videoInputRef = useRef<HTMLInputElement>(null);
 
     // ✅ Native upload states
     const [mediaMeta, setMediaMeta] = useState<any[]>([]);
@@ -6802,10 +6833,23 @@ export const CreatePostModal = memo(
 
     // ✅ Video picker - works in app and web
     const handleNativeVideoClick = () => {
-      if (onVideoClick) {
-        onVideoClick();
-      } else {
-        fileInputRef.current?.click();
+      videoInputRef.current?.click();
+    };
+
+    const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const list = Array.from<File>(e.target.files || []);
+      if (list.length === 0) return;
+      const v = list.find((f) => f.type.startsWith('video/')) || list[0];
+      if (v) {
+        setFiles([v]);
+        setPreviews([URL.createObjectURL(v)]);
+        setType('video');
+        setActiveBackground('');
+        setLinkPreview(null);
+        setView('main');
+      }
+      if (e.target) {
+        e.target.value = '';
       }
     };
 
@@ -7383,6 +7427,13 @@ export const CreatePostModal = memo(
           accept="image/*,video/*"
           multiple
           onChange={handleFileChange}
+        />
+        <input
+          type="file"
+          ref={videoInputRef}
+          className="hidden"
+          accept="video/*"
+          onChange={handleVideoChange}
         />
       </div>
     );

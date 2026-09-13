@@ -285,7 +285,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     const exploreCount = Math.max(0, limit - freshCount);
 
     // ============================================================
-    // 1) POSTS (videos excluded)
+    // 1) POSTS (videos INCLUDED)
     // ============================================================
     const wherePosts: string[] = [];
     const bindsPosts: any[] = [];
@@ -300,21 +300,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       AND p.content NOT LIKE '%"product_id"%'
       AND p.content NOT LIKE '%marketplace%'
     ))`);
-
-    wherePosts.push(`(
-      COALESCE(LOWER(p.media_type), '') NOT LIKE '%video%'
-      AND COALESCE(LOWER(p.media_url), '') NOT LIKE '%.mp4%'
-      AND COALESCE(LOWER(p.media_url), '') NOT LIKE '%.webm%'
-      AND COALESCE(LOWER(p.media_url), '') NOT LIKE '%.mov%'
-      AND COALESCE(LOWER(p.media_url), '') NOT LIKE '%.m4v%'
-      AND COALESCE(LOWER(p.media_url), '') NOT LIKE '%.m3u8%'
-      AND COALESCE(LOWER(p.media_urls), '') NOT LIKE '%.mp4%'
-      AND COALESCE(LOWER(p.media_urls), '') NOT LIKE '%.webm%'
-      AND COALESCE(LOWER(p.media_urls), '') NOT LIKE '%.mov%'
-      AND COALESCE(LOWER(p.media_urls), '') NOT LIKE '%.m4v%'
-      AND COALESCE(LOWER(p.media_urls), '') NOT LIKE '%.m3u8%'
-      AND (p.media_meta IS NULL OR LOWER(p.media_meta) NOT LIKE '%"type":"video"%')
-    )`);
 
     if (cursor && cursor.trim()) {
       wherePosts.push(`p.created_at < ?`);
@@ -489,191 +474,188 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       LEFT JOIN users u ON u.id = p.user_id
     `;
 
+    // ============================================================
+    // 2) SONGS
+    // ============================================================
+    const whereSongs: string[] = [];
+    const bindsSongs: any[] = [];
 
-// ============================================================
-// 2) SONGS
-// ============================================================
-const whereSongs: string[] = [];
-const bindsSongs: any[] = [];
+    if (cursor && cursor.trim()) {
+      whereSongs.push(`s.created_at < ?`);
+      bindsSongs.push(cursor.trim());
+    }
+    if (seen.length > 0) {
+      whereSongs.push(`s.id NOT IN (${seen.map(() => "?").join(",")})`);
+      bindsSongs.push(...seen);
+    }
 
-if (cursor && cursor.trim()) {
-  whereSongs.push(`s.created_at < ?`);
-  bindsSongs.push(cursor.trim());
-}
-if (seen.length > 0) {
-  whereSongs.push(`s.id NOT IN (${seen.map(() => "?").join(",")})`);
-  bindsSongs.push(...seen);
-}
+    const whereSongsSql = whereSongs.length
+      ? `WHERE ${whereSongs.join(" AND ")}`
+      : "";
 
-const whereSongsSql = whereSongs.length
-  ? `WHERE ${whereSongs.join(" AND ")}`
-  : "";
+    const baseSelectSongs = `
+      SELECT
+        'song' AS source,
+        'song' AS item_type,
 
-const baseSelectSongs = `
-  SELECT
-    'song' AS source,
-    'song' AS item_type,
+        s.id AS id,
+        ('song:' || CAST(s.id AS TEXT)) AS feed_key,
 
-    s.id AS id,
-    ('song:' || CAST(s.id AS TEXT)) AS feed_key,
+        s.created_at AS created_at,
 
-    s.created_at AS created_at,
+        NULL AS post_id,
+        NULL AS reel_id,
+        s.id AS song_id2,
+        NULL AS podcast_id,
+        NULL AS event_id,
+        NULL AS group_post_id,
+        NULL AS product_id2,
 
-    NULL AS post_id,
-    NULL AS reel_id,
-    s.id AS song_id2,
-    NULL AS podcast_id,
-    NULL AS event_id,
-    NULL AS group_post_id,
-    NULL AS product_id2,
+        s.uploader_id AS user_id,
+        COALESCE(u.username, 'user') AS username,
+        COALESCE(u.name, u.username, 'User') AS name,
+        CASE
+          WHEN u.profile_image_url LIKE 'data:%' THEN NULL
+          WHEN length(u.profile_image_url) > 300 THEN NULL
+          ELSE u.profile_image_url
+        END AS profile_image_url,
+        COALESCE(u.is_verified, 0) AS is_verified,
+        COALESCE(u.role, 'user') AS role,
 
-    s.uploader_id AS user_id,
-    COALESCE(u.username, 'user') AS username,
-    COALESCE(u.name, u.username, 'User') AS name,
-    CASE
-      WHEN u.profile_image_url LIKE 'data:%' THEN NULL
-      WHEN length(u.profile_image_url) > 300 THEN NULL
-      ELSE u.profile_image_url
-    END AS profile_image_url,
-    COALESCE(u.is_verified, 0) AS is_verified,
-    COALESCE(u.role, 'user') AS role,
+        (
+          COALESCE(s.title,'')
+          || CASE
+               WHEN s.artist_name IS NOT NULL AND s.artist_name != '' THEN ' — ' || s.artist_name
+               ELSE ''
+             END
+        ) AS content,
 
-    (
-      COALESCE(s.title,'')
-      || CASE
-           WHEN s.artist_name IS NOT NULL AND s.artist_name != '' THEN ' — ' || s.artist_name
-           ELSE ''
-         END
-    ) AS content,
+        'public' AS visibility,
+        0 AS views,
+        0 AS shares,
 
-    'public' AS visibility,
-    0 AS views,
-    0 AS shares,
+        NULL AS media_url,
+        NULL AS media_type,
+        NULL AS media_urls,
+        NULL AS media_types,
+        NULL AS media_meta,
 
-    NULL AS media_url,
-    NULL AS media_type,
-    NULL AS media_urls,
-    NULL AS media_types,
-    NULL AS media_meta,
+        (SELECT COUNT(*) FROM song_comments sc WHERE sc.song_id = s.id) AS comments_count,
 
-    (SELECT COUNT(*) FROM song_comments sc WHERE sc.song_id = s.id) AS comments_count,
+        (SELECT COUNT(*) FROM song_reactions sr WHERE sr.song_id = s.id) AS reactions_count,
+        (SELECT sr.type FROM song_reactions sr WHERE sr.song_id = s.id AND sr.user_id = ? LIMIT 1) AS my_reaction,
 
-    (SELECT COUNT(*) FROM song_reactions sr WHERE sr.song_id = s.id) AS reactions_count,
-    (SELECT sr.type FROM song_reactions sr WHERE sr.song_id = s.id AND sr.user_id = ? LIMIT 1) AS my_reaction,
+        (
+          SELECT COALESCE(u2.name, u2.username, '')
+          FROM song_reactions sr2
+          JOIN users u2 ON u2.id = sr2.user_id
+          WHERE sr2.song_id = s.id
+          ORDER BY sr2.created_at DESC, sr2.id DESC
+          LIMIT 1
+        ) AS reactor_name,
 
-    (
-      SELECT COALESCE(u2.name, u2.username, '')
-      FROM song_reactions sr2
-      JOIN users u2 ON u2.id = sr2.user_id
-      WHERE sr2.song_id = s.id
-      ORDER BY sr2.created_at DESC, sr2.id DESC
-      LIMIT 1
-    ) AS reactor_name,
+        (
+          SELECT json_group_array(
+            json_object(
+              'user_id', x.user_id,
+              'type', x.type,
+              'name', x.name,
+              'profile_image_url', x.profile_image_url
+            )
+          )
+          FROM (
+            SELECT
+              sr3.user_id AS user_id,
+              LOWER(COALESCE(sr3.type,'like')) AS type,
+              COALESCE(u3.name, u3.username, '') AS name,
+              CASE
+                WHEN u3.profile_image_url LIKE 'data:%' THEN NULL
+                WHEN length(u3.profile_image_url) > 300 THEN NULL
+                ELSE u3.profile_image_url
+              END AS profile_image_url
+            FROM song_reactions sr3
+            LEFT JOIN users u3 ON u3.id = sr3.user_id
+            WHERE sr3.song_id = s.id
+            ORDER BY sr3.created_at DESC, sr3.id DESC
+            LIMIT 30
+          ) x
+        ) AS reactions_preview,
 
-    (
-      SELECT json_group_array(
+        (
+          SELECT json_group_array(
+            json_object('type', t.type, 'count', t.c)
+          )
+          FROM (
+            SELECT LOWER(COALESCE(type,'like')) AS type, COUNT(*) AS c
+            FROM song_reactions
+            WHERE song_id = s.id
+            GROUP BY LOWER(COALESCE(type,'like'))
+            ORDER BY c DESC
+          ) t
+        ) AS reactions_by_type,
+
+        NULL AS video_url,
+        NULL AS caption,
+        NULL AS song_name,
+        s.audio_url AS audio_url,
+        0 AS audio_start,
+        0 AS audio_end,
+        NULL AS location,
+        NULL AS sound_key,
+        NULL AS sound_id,
+
+        s.title AS song_title,
+        s.artist_name AS song_artist_name,
+        s.album_name AS song_album_name,
+        s.cover_image_url AS song_cover_image_url,
+        s.duration_seconds AS song_duration_seconds,
+        s.genre AS song_genre,
+
+        (SELECT COUNT(*) FROM song_reactions sr WHERE sr.song_id = s.id) AS song_likes_count,
+        (
+          (SELECT COUNT(*) FROM song_play_events spe WHERE spe.song_id = s.id)
+          +
+          (SELECT COUNT(*) FROM song_plays sp WHERE sp.song_id = s.id)
+        ) AS song_plays_count,
+
+        NULL AS podcast_title,
+        NULL AS podcast_description,
+        NULL AS podcast_audio_url,
+        NULL AS podcast_cover_url,
+        NULL AS podcast_plays_count,
+
+        NULL AS event_date,
+        NULL AS event_description,
+        NULL AS attending_count,
+        NULL AS interested_count,
+        NULL AS my_rsvp_status,
+
+        'music' AS type,
+        'music' AS post_type,
+        'music' AS kind,
         json_object(
-          'user_id', x.user_id,
-          'type', x.type,
-          'name', x.name,
-          'profile_image_url', x.profile_image_url
-        )
-      )
-      FROM (
-        SELECT
-          sr3.user_id AS user_id,
-          LOWER(COALESCE(sr3.type,'like')) AS type,
-          COALESCE(u3.name, u3.username, '') AS name,
-          CASE
-            WHEN u3.profile_image_url LIKE 'data:%' THEN NULL
-            WHEN length(u3.profile_image_url) > 300 THEN NULL
-            ELSE u3.profile_image_url
-          END AS profile_image_url
-        FROM song_reactions sr3
-        LEFT JOIN users u3 ON u3.id = sr3.user_id
-        WHERE sr3.song_id = s.id
-        ORDER BY sr3.created_at DESC, sr3.id DESC
-        LIMIT 30
-      ) x
-    ) AS reactions_preview,
+          'kind', 'music',
+          'type', 'music',
+          'song', json_object(
+            'id', s.id,
+            'title', s.title,
+            'artist_name', s.artist_name,
+            'album_name', s.album_name,
+            'cover_image_url', s.cover_image_url,
+            'audio_url', s.audio_url,
+            'duration_seconds', s.duration_seconds,
+            'genre', s.genre,
+            'uploader_id', s.uploader_id
+          )
+        ) AS meta,
 
-    (
-      SELECT json_group_array(
-        json_object('type', t.type, 'count', t.c)
-      )
-      FROM (
-        SELECT LOWER(COALESCE(type,'like')) AS type, COUNT(*) AS c
-        FROM song_reactions
-        WHERE song_id = s.id
-        GROUP BY LOWER(COALESCE(type,'like'))
-        ORDER BY c DESC
-      ) t
-    ) AS reactions_by_type,
+        NULL AS group_id,
+        NULL AS group_name,
+        NULL AS group_image
+      FROM songs s
+      LEFT JOIN users u ON u.id = s.uploader_id
+    `;
 
-    NULL AS video_url,
-    NULL AS caption,
-    NULL AS song_name,
-    s.audio_url AS audio_url,
-    0 AS audio_start,
-    0 AS audio_end,
-    NULL AS location,
-    NULL AS sound_key,
-    NULL AS sound_id,
-
-    s.title AS song_title,
-    s.artist_name AS song_artist_name,
-    s.album_name AS song_album_name,
-    s.cover_image_url AS song_cover_image_url,
-    s.duration_seconds AS song_duration_seconds,
-    s.genre AS song_genre,
-
-    (SELECT COUNT(*) FROM song_reactions sr WHERE sr.song_id = s.id) AS song_likes_count,
-    (
-      (SELECT COUNT(*) FROM song_play_events spe WHERE spe.song_id = s.id)
-      +
-      (SELECT COUNT(*) FROM song_plays sp WHERE sp.song_id = s.id)
-    ) AS song_plays_count,
-
-    NULL AS podcast_title,
-    NULL AS podcast_description,
-    NULL AS podcast_audio_url,
-    NULL AS podcast_cover_url,
-    NULL AS podcast_plays_count,
-
-    NULL AS event_date,
-    NULL AS event_description,
-    NULL AS attending_count,
-    NULL AS interested_count,
-    NULL AS my_rsvp_status,
-
-    'music' AS type,
-    'music' AS post_type,
-    'music' AS kind,
-    json_object(
-      'kind', 'music',
-      'type', 'music',
-      'song', json_object(
-        'id', s.id,
-        'title', s.title,
-        'artist_name', s.artist_name,
-        'album_name', s.album_name,
-        'cover_image_url', s.cover_image_url,
-        'audio_url', s.audio_url,
-        'duration_seconds', s.duration_seconds,
-        'genre', s.genre,
-        'uploader_id', s.uploader_id
-      )
-    ) AS meta,
-
-    NULL AS group_id,
-    NULL AS group_name,
-    NULL AS group_image
-  FROM songs s
-  LEFT JOIN users u ON u.id = s.uploader_id
-`;
-
-
-    
     // ============================================================
     // 3) PODCASTS
     // ============================================================
@@ -938,25 +920,12 @@ const baseSelectSongs = `
     `;
 
     // ============================================================
-    // 5) GROUP POSTS (videos excluded)
+    // 5) GROUP POSTS (videos INCLUDED)
     // ============================================================
     const whereGroupPosts: string[] = [];
     const bindsGroupPosts: any[] = [];
 
     whereGroupPosts.push(`(gp.visibility IS NULL OR gp.visibility = 'public')`);
-
-    whereGroupPosts.push(`(
-      COALESCE(LOWER(gp.media_url), '') NOT LIKE '%.mp4%'
-      AND COALESCE(LOWER(gp.media_url), '') NOT LIKE '%.webm%'
-      AND COALESCE(LOWER(gp.media_url), '') NOT LIKE '%.mov%'
-      AND COALESCE(LOWER(gp.media_url), '') NOT LIKE '%.m4v%'
-      AND COALESCE(LOWER(gp.media_url), '') NOT LIKE '%.m3u8%'
-      AND COALESCE(LOWER(gp.media_urls), '') NOT LIKE '%.mp4%'
-      AND COALESCE(LOWER(gp.media_urls), '') NOT LIKE '%.webm%'
-      AND COALESCE(LOWER(gp.media_urls), '') NOT LIKE '%.mov%'
-      AND COALESCE(LOWER(gp.media_urls), '') NOT LIKE '%.m4v%'
-      AND COALESCE(LOWER(gp.media_urls), '') NOT LIKE '%.m3u8%'
-    )`);
 
     if (cursor && cursor.trim()) {
       whereGroupPosts.push(`gp.created_at < ?`);
@@ -1336,28 +1305,13 @@ const baseSelectSongs = `
     `;
 
     // ============================================================
-    // 8) BOOSTED POSTS FROM ADS TABLE (videos excluded)
+    // 8) BOOSTED POSTS FROM ADS TABLE (videos INCLUDED)
     // ============================================================
     const whereAds: string[] = [];
     const bindsAds: any[] = [];
 
     whereAds.push(`a.status = 'active'`);
     whereAds.push(`a.post_id IS NOT NULL`);
-
-    whereAds.push(`(
-      COALESCE(LOWER(p.media_type), '') NOT LIKE '%video%'
-      AND COALESCE(LOWER(COALESCE(a.media_url, p.media_url)), '') NOT LIKE '%.mp4%'
-      AND COALESCE(LOWER(COALESCE(a.media_url, p.media_url)), '') NOT LIKE '%.webm%'
-      AND COALESCE(LOWER(COALESCE(a.media_url, p.media_url)), '') NOT LIKE '%.mov%'
-      AND COALESCE(LOWER(COALESCE(a.media_url, p.media_url)), '') NOT LIKE '%.m4v%'
-      AND COALESCE(LOWER(COALESCE(a.media_url, p.media_url)), '') NOT LIKE '%.m3u8%'
-      AND COALESCE(LOWER(COALESCE(a.media_urls, p.media_urls)), '') NOT LIKE '%.mp4%'
-      AND COALESCE(LOWER(COALESCE(a.media_urls, p.media_urls)), '') NOT LIKE '%.webm%'
-      AND COALESCE(LOWER(COALESCE(a.media_urls, p.media_urls)), '') NOT LIKE '%.mov%'
-      AND COALESCE(LOWER(COALESCE(a.media_urls, p.media_urls)), '') NOT LIKE '%.m4v%'
-      AND COALESCE(LOWER(COALESCE(a.media_urls, p.media_urls)), '') NOT LIKE '%.m3u8%'
-      AND (p.media_meta IS NULL OR LOWER(p.media_meta) NOT LIKE '%"type":"video"%')
-    )`);
 
     if (cursor && cursor.trim()) {
       whereAds.push(`a.created_at < ?`);
@@ -1805,7 +1759,7 @@ const baseSelectSongs = `
     const products = Array.from(productMap.values());
 
     // ============================================================
-    // hasMore (posts-only simple)
+    // hasMore (posts-only simple, videos INCLUDED)
     // ============================================================
     let hasMore = false;
     if (nextCursor) {
@@ -1820,20 +1774,6 @@ const baseSelectSongs = `
             AND p.content NOT LIKE '%"product_id"%'
             AND p.content NOT LIKE '%marketplace%'
           ))
-          AND (
-            COALESCE(LOWER(p.media_type), '') NOT LIKE '%video%'
-            AND COALESCE(LOWER(p.media_url), '') NOT LIKE '%.mp4%'
-            AND COALESCE(LOWER(p.media_url), '') NOT LIKE '%.webm%'
-            AND COALESCE(LOWER(p.media_url), '') NOT LIKE '%.mov%'
-            AND COALESCE(LOWER(p.media_url), '') NOT LIKE '%.m4v%'
-            AND COALESCE(LOWER(p.media_url), '') NOT LIKE '%.m3u8%'
-            AND COALESCE(LOWER(p.media_urls), '') NOT LIKE '%.mp4%'
-            AND COALESCE(LOWER(p.media_urls), '') NOT LIKE '%.webm%'
-            AND COALESCE(LOWER(p.media_urls), '') NOT LIKE '%.mov%'
-            AND COALESCE(LOWER(p.media_urls), '') NOT LIKE '%.m4v%'
-            AND COALESCE(LOWER(p.media_urls), '') NOT LIKE '%.m3u8%'
-            AND (p.media_meta IS NULL OR LOWER(p.media_meta) NOT LIKE '%"type":"video"%')
-          )
           AND p.created_at < ?
         ORDER BY p.created_at DESC
         LIMIT 1

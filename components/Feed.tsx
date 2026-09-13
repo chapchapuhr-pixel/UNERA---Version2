@@ -5865,6 +5865,7 @@ export const Post = memo(
             currentUser={currentUser}
             users={users}
             stories={stories}
+            autoplay={false}
             onProfileClick={onProfileClick}
             onReact={(postItem, rType) => onReact(post, rType)}
             onShare={(postId, newCount) => {

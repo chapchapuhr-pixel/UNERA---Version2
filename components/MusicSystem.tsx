@@ -3192,7 +3192,7 @@ const MusicSystem: React.FC<MusicSystemProps> = ({
                   onArtistClick={handleArtistClick}
                   badgeBuilder={() => ({
                     text: 'GEM',
-                    className: 'bg-[#8B5CF6] text-white'
+                    className: 'bg-[#1877F2] text-white'
                   })}
                   trackPlays={trackPlays}
                   reactionCounts={reactionCounts}

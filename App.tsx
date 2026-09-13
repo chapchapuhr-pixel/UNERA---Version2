@@ -18,6 +18,7 @@ import { UserProfile } from './components/UserProfile';
 import { MarketplacePage, ProductDetailModal } from './components/Marketplace';
 import { ReelsFeed } from './components/Reels';
 import { VideosPage } from './components/VideosPage';
+import { NativeMediaGalleryModal } from './components/NativeMediaGalleryModal';
 import { AllEvents } from "./components/AllEvents";
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ImageViewer, ProfessionalLoader } from './components/Common';
@@ -3343,6 +3344,7 @@ const mixedFeedItems = useMemo(() => {
   const [showCreateReelModal, setShowCreateReelModal] = useState(false);
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
+  const [showNativeGallery, setShowNativeGallery] = useState(false);
 
   const [activeSharePost, setActiveSharePost] = useState<any>(null);
   const [showShareSheet, setShowShareSheet] = useState(false);
@@ -8596,6 +8598,7 @@ const createPost = useCallback(
     let media_url: string | null = null;
     let media_type: string | null = null;
 
+    const metaAny = meta as any;
     const hasPhotos = meta?.type === 'image' || (list.length > 0 && list.some(f => f.type.startsWith('image/')));
     let previewUrl: string | undefined;
     if (list.length > 0 && list[0].type.startsWith('image/')) {
@@ -8756,6 +8759,9 @@ const createPost = useCallback(
         reelFormData.append('thumbnail_url', media_meta[0]?.thumb || media_url);
         reelFormData.append('user_id', String(currentUser.id));
         if (meta?.visibility) reelFormData.append('visibility', meta.visibility);
+        if (metaAny?.song_name || metaAny?.sound?.title) reelFormData.append('song_name', metaAny?.song_name || metaAny?.sound?.title);
+        if (metaAny?.song_id || metaAny?.sound?.id) reelFormData.append('song_id', String(metaAny?.song_id || metaAny?.sound?.id));
+        if (metaAny?.audio_url || metaAny?.sound?.audioUrl) reelFormData.append('audio_url', metaAny?.audio_url || metaAny?.sound?.audioUrl);
 
         const reelRes = await apiFetch('/api/reels', {
           method: 'POST',
@@ -8790,6 +8796,9 @@ const createPost = useCallback(
       media_types: media_types.length ? media_types : undefined,
       media_meta: media_meta.length ? media_meta : undefined,
       visibility: meta?.visibility ?? 'public',
+      song_name: metaAny?.song_name || metaAny?.sound?.title || undefined,
+      song_id: metaAny?.song_id || metaAny?.sound?.id || undefined,
+      audio_url: metaAny?.audio_url || metaAny?.sound?.audioUrl || undefined,
       location: meta?.location,
       feeling: meta?.feeling,
       tagged_users: meta?.taggedUsers,
@@ -8999,25 +9008,47 @@ const createPost = useCallback(
     navigateTo('reels');
   }, [navigateTo]);
 
-  // Handle photo click
+  // Handle photo click - launches professional native gallery with music attachment
   const handlePhotoClick = useCallback(() => {
     if (!requireAuth('Creating posts')) return;
-    setShowCreatePostModal(true);
+    setShowNativeGallery(true);
   }, [requireAuth]);
 
   const handleVideoClickFromCreate = useCallback(() => {
     if (!requireAuth('Creating videos')) return;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'video/*';
-    input.onchange = (e) => {
-      const files = Array.from((e.target as HTMLInputElement).files || []);
-      if (files.length > 0) {
-        createPost('', files, { type: 'video' });
+    setShowNativeGallery(true);
+  }, [requireAuth]);
+
+  // Handle native gallery proceed with media and attached music
+  const handleGalleryProceed = useCallback(
+    (data: {
+      files: File[];
+      mediaUrls: string[];
+      mediaType: 'image' | 'video' | 'mixed';
+      attachedMusic: any;
+    }) => {
+      setShowNativeGallery(false);
+
+      const meta: any = {
+        type: data.mediaType,
+        song_name: data.attachedMusic?.title,
+        song_id: data.attachedMusic?.id,
+        audio_url: data.attachedMusic?.audioUrl,
+        sound: data.attachedMusic,
+      };
+
+      if (data.files && data.files.length > 0) {
+        createPost('', data.files, meta);
+      } else if (data.mediaUrls && data.mediaUrls.length > 0) {
+        createPost('', null, {
+          ...meta,
+          media_urls: data.mediaUrls,
+          media_url: data.mediaUrls[0],
+        });
       }
-    };
-    input.click();
-  }, [requireAuth, createPost]);
+    },
+    [createPost]
+  );
 
 const handleReelVideoSelected = useCallback(
   (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -10503,6 +10534,7 @@ return (
     users={safeArray(users)}
     stories={safeArray(orderedStories)}
     currentUser={currentUser}
+    initialVideoId={selectedReelId}
     onPostVideoClick={handleVideoClickFromCreate}
     onProfileClick={(id) => openProfile(id)}
     onStoryClick={(id) => openProfile(id)}
@@ -11176,6 +11208,20 @@ return (
           setShowCreateEventModal(true);
         }}
         onVideoClick={handleVideoClickFromCreate}
+      />
+    )}
+
+    {showNativeGallery && currentUser && (
+      <NativeMediaGalleryModal
+        isOpen={showNativeGallery}
+        currentUser={currentUser}
+        songs={songs}
+        onClose={() => setShowNativeGallery(false)}
+        onProceed={handleGalleryProceed}
+        onOpenCamera={() => {
+          setShowNativeGallery(false);
+          setShowRecorder(true);
+        }}
       />
     )}
 

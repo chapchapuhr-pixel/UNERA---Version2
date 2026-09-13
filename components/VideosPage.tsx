@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { InstagramVideoCard } from './InstagramVideoCard';
-import { safeUserId, avatarFrom } from './Feed';
+import { safeUserId } from './Feed';
 
 interface VideosPageProps {
   posts?: any[];
@@ -8,7 +8,8 @@ interface VideosPageProps {
   users?: any[];
   stories?: any[];
   currentUser: any;
-  onPostVideoClick: () => void;
+  initialVideoId?: number | string | null;
+  onPostVideoClick?: () => void;
   onProfileClick: (userId: number) => void;
   onStoryClick?: (userId: number) => void;
   onReact?: (post: any, type: string) => void;
@@ -26,7 +27,7 @@ export const VideosPage: React.FC<VideosPageProps> = ({
   users = [],
   stories = [],
   currentUser,
-  onPostVideoClick,
+  initialVideoId,
   onProfileClick,
   onStoryClick,
   onReact,
@@ -113,6 +114,37 @@ export const VideosPage: React.FC<VideosPageProps> = ({
     return list;
   }, [posts, reels, users]);
 
+  // Jump to specific video when initialVideoId is provided
+  useEffect(() => {
+    if (!initialVideoId || allVideos.length === 0) return;
+    const targetId = String(initialVideoId);
+    const index = allVideos.findIndex(
+      (v) =>
+        String(v.id) === targetId ||
+        String(v.reel_id) === targetId ||
+        String(v.post_id) === targetId
+    );
+
+    if (index !== -1) {
+      const targetPage = Math.floor(index / VIDEOS_PER_PAGE) + 1;
+      setCurrentPage(targetPage);
+
+      const timer = setTimeout(() => {
+        const el =
+          document.getElementById(`video-card-${targetId}`) ||
+          document.getElementById(`video-card-${allVideos[index].id}`) ||
+          document.getElementById(`video-card-${allVideos[index].reel_id}`) ||
+          document.querySelector(`[data-video-id="${targetId}"]`) ||
+          document.querySelector(`[data-reel-id="${targetId}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 200);
+
+      return () => clearTimeout(timer);
+    }
+  }, [initialVideoId, allVideos]);
+
   // Pagination calculation: 15 videos per page
   const totalVideos = allVideos.length;
   const totalPages = Math.max(1, Math.ceil(totalVideos / VIDEOS_PER_PAGE));
@@ -133,63 +165,22 @@ export const VideosPage: React.FC<VideosPageProps> = ({
 
   return (
     <div ref={containerRef} className="w-full max-w-[700px] mx-auto min-h-screen pb-20">
-      {/* 1. TOP HEADER - PROFESSIONAL "POST VIDEO" BAR */}
-      <div className="bg-[#0B1120] border-b border-[#1E293B] sticky top-14 z-30 px-3.5 py-3 shadow-md">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            {onBack && (
-              <button
-                onClick={onBack}
-                className="w-8 h-8 rounded-lg bg-[#0F172A] hover:bg-[#1E293B] border border-[#1E293B] text-[#94A3B8] hover:text-white flex items-center justify-center transition-colors"
-                aria-label="Back"
-              >
-                <i className="fas fa-arrow-left text-[13px]"></i>
-              </button>
-            )}
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#EC4899] to-[#8B5CF6] flex items-center justify-center text-white shadow-sm flex-shrink-0">
-              <i className="fas fa-play text-[13px]"></i>
-            </div>
-            <div>
-              <h1 className="text-[17px] font-bold text-[#F8FAFC] leading-none">Videos</h1>
-              <span className="text-[12px] text-[#94A3B8]">
-                {totalVideos} {totalVideos === 1 ? 'video' : 'videos'} posted
-              </span>
-            </div>
-          </div>
-
-          {/* "+ Post Video" Button */}
+      {/* 1. CLEAN VIDEO PAGE HEADER (No Videos icon, No videos posted text, No Post Video button, No Share prompt) */}
+      {onBack && (
+        <div className="bg-[#0B1120] border-b border-[#1E293B] sticky top-14 z-30 px-3.5 py-2.5 flex items-center gap-3 shadow-md">
           <button
-            onClick={onPostVideoClick}
+            onClick={onBack}
             type="button"
-            className="flex items-center gap-2 bg-gradient-to-r from-[#1877F2] to-[#166FE5] hover:from-[#166FE5] hover:to-[#0D5BC6] text-white text-[13.5px] font-semibold px-4 py-2 rounded-xl shadow-[0_2px_10px_rgba(24,119,242,0.35)] active:scale-95 transition-all cursor-pointer"
+            className="w-8 h-8 rounded-lg bg-[#0F172A] hover:bg-[#1E293B] border border-[#1E293B] text-[#94A3B8] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            aria-label="Back"
           >
-            <i className="fas fa-video text-[13px]"></i>
-            <span>Post Video</span>
+            <i className="fas fa-arrow-left text-[13px]"></i>
           </button>
+          <span className="text-[16px] font-bold text-[#F8FAFC]">Videos</span>
         </div>
+      )}
 
-        {/* Quick Post Prompt bar if logged in */}
-        {currentUser && (
-          <div
-            onClick={onPostVideoClick}
-            className="mt-3 flex items-center gap-3 p-2 rounded-xl bg-[#0F172A] hover:bg-[#1E293B] border border-[#1E293B] transition-colors cursor-pointer"
-          >
-            <img
-              src={avatarFrom(currentUser)}
-              alt=""
-              className="w-7 h-7 rounded-full object-cover border border-[#334155]"
-            />
-            <span className="text-[13px] text-[#94A3B8] flex-1">
-              Share a video to feed and reels...
-            </span>
-            <span className="text-xs font-semibold text-[#38BDF8] px-2.5 py-1 bg-[#0284C7]/15 rounded-lg border border-[#38BDF8]/30">
-              Upload
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* 2. VIDEOS FEED - ONLY VIDEOS USING INSTAGRAM VIDEO CARD */}
+      {/* 2. VIDEOS STREAM - AUTOPLAY ENABLED */}
       {currentVideos.length > 0 ? (
         <div className="flex flex-col divide-y divide-[#1E293B]">
           {currentVideos.map((videoPost, idx) => {
@@ -205,15 +196,23 @@ export const VideosPage: React.FC<VideosPageProps> = ({
 
             const authorId = safeUserId(author);
             const isFollowing = checkIsFollowing ? checkIsFollowing(authorId) : false;
+            const elementId = videoPost.reel_id || videoPost.id || `v_${idx}`;
 
             return (
-              <div key={videoPost.id || `v_${idx}`} className="w-full bg-[#0F172A]">
+              <div
+                key={videoPost.id || `v_${idx}`}
+                id={`video-card-${elementId}`}
+                data-video-id={videoPost.id}
+                data-reel-id={videoPost.reel_id}
+                className="w-full bg-[#0F172A]"
+              >
                 <InstagramVideoCard
                   post={videoPost}
                   author={author}
                   currentUser={currentUser}
                   users={users}
                   stories={stories}
+                  autoplay={true}
                   onProfileClick={onProfileClick}
                   onStoryClick={onStoryClick}
                   onReact={onReact ? (postId, type) => onReact(videoPost, type) : undefined}
@@ -228,27 +227,19 @@ export const VideosPage: React.FC<VideosPageProps> = ({
       ) : (
         /* Empty State */
         <div className="flex flex-col items-center justify-center p-12 text-center my-10">
-          <div className="w-20 h-20 rounded-full bg-[#0F172A] border border-[#1E293B] flex items-center justify-center text-[#64748B] mb-4">
-            <i className="fas fa-film text-3xl text-[#38BDF8]"></i>
+          <div className="w-16 h-16 rounded-full bg-[#0F172A] border border-[#1E293B] flex items-center justify-center text-[#64748B] mb-4">
+            <i className="fas fa-film text-2xl text-[#38BDF8]"></i>
           </div>
-          <h3 className="text-lg font-bold text-[#F8FAFC]">No Videos Posted Yet</h3>
-          <p className="text-sm text-[#94A3B8] max-w-sm mt-1 mb-5">
-            Be the first to share a video with the UNERA community. Videos are posted to both feed and reels!
+          <h3 className="text-base font-bold text-[#F8FAFC]">No Videos Available</h3>
+          <p className="text-xs text-[#94A3B8] max-w-sm mt-1">
+            Videos from the feed and reels will appear here.
           </p>
-          <button
-            onClick={onPostVideoClick}
-            type="button"
-            className="flex items-center gap-2 bg-[#1877F2] hover:bg-[#166FE5] text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg transition-transform active:scale-95 cursor-pointer"
-          >
-            <i className="fas fa-video"></i>
-            <span>Post First Video</span>
-          </button>
         </div>
       )}
 
       {/* 3. PAGINATION AFTER 15 VIDEOS */}
       {totalPages > 1 && (
-        <div className="mt-6 mb-10 px-4 py-4 bg-[#0B1120] border border-[#1E293B] rounded-2xl mx-3 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="mt-6 mb-10 px-4 py-3.5 bg-[#0B1120] border border-[#1E293B] rounded-2xl mx-3 flex flex-col sm:flex-row items-center justify-between gap-4">
           <span className="text-xs text-[#94A3B8] font-medium">
             Showing <strong className="text-[#F8FAFC]">{startIndex + 1}–{endIndex}</strong> of{' '}
             <strong className="text-[#F8FAFC]">{totalVideos}</strong> videos
@@ -262,7 +253,7 @@ export const VideosPage: React.FC<VideosPageProps> = ({
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors ${
                 currentPage === 1
                   ? 'text-[#475569] bg-[#0F172A] border border-[#1E293B]/60 cursor-not-allowed'
-                  : 'text-[#CBD5E1] bg-[#1E293B] hover:bg-[#334155] border border-[#334155]'
+                  : 'text-[#CBD5E1] bg-[#1E293B] hover:bg-[#334155] border border-[#334155] cursor-pointer'
               }`}
             >
               <i className="fas fa-chevron-left text-[10px]"></i>
@@ -271,7 +262,6 @@ export const VideosPage: React.FC<VideosPageProps> = ({
 
             {/* Page number buttons */}
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-              // Show only nearby pages if there are many
               if (
                 totalPages > 6 &&
                 pageNum !== 1 &&
@@ -293,7 +283,7 @@ export const VideosPage: React.FC<VideosPageProps> = ({
                 <button
                   key={pageNum}
                   onClick={() => handlePageChange(pageNum)}
-                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     isActive
                       ? 'bg-[#1877F2] text-white shadow-md shadow-[#1877F2]/30'
                       : 'bg-[#0F172A] hover:bg-[#1E293B] text-[#94A3B8] border border-[#1E293B]'
@@ -311,7 +301,7 @@ export const VideosPage: React.FC<VideosPageProps> = ({
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors ${
                 currentPage === totalPages
                   ? 'text-[#475569] bg-[#0F172A] border border-[#1E293B]/60 cursor-not-allowed'
-                  : 'text-[#CBD5E1] bg-[#1E293B] hover:bg-[#334155] border border-[#334155]'
+                  : 'text-[#CBD5E1] bg-[#1E293B] hover:bg-[#334155] border border-[#334155] cursor-pointer'
               }`}
             >
               <span>Next</span>

@@ -582,7 +582,7 @@ export const Header: React.FC<HeaderProps> = ({
       { id: 'marketplace', title: 'Marketplace', icon: 'fas fa-store', color: '#10B981', desc: 'Browse and sell items', action: () => onMarketplaceClick() },
       { id: 'groups', title: 'Groups', icon: 'fas fa-users', color: '#1877F2', desc: 'Discover and join communities', action: () => onGroupsClick() },
       { id: 'reels', title: 'Reels', icon: 'fas fa-video', color: '#F43F5E', desc: 'Watch trending short reels & videos', action: () => onReelsClick() },
-      { id: 'music', title: 'UNERA Music', icon: 'fas fa-music', color: '#8B5CF6', desc: 'Listen to songs and audio tracks', action: () => onNavigate('music') },
+      { id: 'music', title: 'UNERA Music', icon: 'fas fa-music', color: '#1877F2', desc: 'Listen to songs and audio tracks', action: () => onNavigate('music') },
       { id: 'ads', title: 'Ad Dashboard', icon: 'fas fa-chart-line', color: '#06B6D4', desc: 'Create and track ads', action: () => onAdsClick() },
       { id: 'events', title: 'Events', icon: 'fas fa-calendar-alt', color: '#EC4899', desc: 'Find local events and gatherings', action: () => onNavigate('events') },
     ];

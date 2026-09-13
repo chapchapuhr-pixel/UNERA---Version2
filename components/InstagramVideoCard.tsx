@@ -9,6 +9,7 @@ interface InstagramVideoCardProps {
   users?: any[];
   stories?: any[];
   hasStory?: boolean;
+  autoplay?: boolean;
   onProfileClick: (userId: number) => void;
   onStoryClick?: (userId: number) => void;
   onReact?: (postId: number, type: any) => void;
@@ -44,6 +45,7 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
   users = [],
   stories = [],
   hasStory,
+  autoplay = true,
   onProfileClick,
   onStoryClick,
   onReact,
@@ -153,10 +155,18 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
   const authorUsername = author?.username || post?.user?.username || authorName.toLowerCase().replace(/\s+/g, '_');
   const authorAvatar = avatarFrom(author || post?.user);
 
-  // Auto-play / pause when visible via IntersectionObserver
+  // Auto-play / pause when visible via IntersectionObserver (controlled by autoplay prop)
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
+
+    if (!autoplay) {
+      if (videoRef.current) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+      return;
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -176,7 +186,7 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [autoplay]);
 
   // Update progress bar
   const handleTimeUpdate = () => {
@@ -451,11 +461,11 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
       {/* 1. INSTAGRAM HEADER */}
       <div className="flex items-center justify-between px-3.5 py-3">
         <div className="flex items-center gap-3">
-          {/* Avatar with authentic story ring/dots only if user has active story */}
+          {/* Avatar with authentic story ring/dots only if user has active story - Blue styled */}
           <div
             className={`relative cursor-pointer transition-transform active:scale-95 ${
               userHasStory
-                ? 'p-[2px] rounded-full bg-gradient-to-tr from-[#F59E0B] via-[#EC4899] to-[#8B5CF6] ring-2 ring-[#0F172A]'
+                ? 'p-[2px] rounded-full bg-gradient-to-tr from-[#1877F2] via-[#0284C7] to-[#38BDF8] ring-2 ring-[#0F172A]'
                 : 'rounded-full'
             }`}
             onClick={() => {
@@ -504,7 +514,7 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
               </span>
             </div>
             <div className="flex items-center gap-1 text-[12px] text-[#94A3B8]">
-              <i className="fas fa-music text-[10px] text-[#A855F7]"></i>
+              <i className="fas fa-music text-[10px] text-[#38BDF8]"></i>
               <span className="truncate max-w-[180px] sm:max-w-[240px]">
                 {post.song_name || 'Original Audio'} • {authorName}
               </span>
@@ -562,6 +572,31 @@ export const InstagramVideoCard: React.FC<InstagramVideoCardProps> = ({
             </div>
           </div>
         )}
+
+        {/* Play Icon when paused (e.g., in feed when autoplay is false) */}
+        {!isPlaying && !showPlayIcon && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <div className="w-14 h-14 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white text-xl shadow-xl transition-transform active:scale-95">
+              <i className="fas fa-play ml-1 text-[#38BDF8]"></i>
+            </div>
+          </div>
+        )}
+
+        {/* User Intent: ">" Button on top of every video to open in Videos page starting from this video */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onVideoClick) {
+              onVideoClick(post);
+            }
+          }}
+          title="Open in Videos page"
+          aria-label="Open in Videos page"
+          className="absolute top-3 right-3 z-20 flex items-center justify-center w-8 h-8 rounded-full bg-black/65 hover:bg-[#1877F2] text-white border border-white/25 shadow-lg backdrop-blur-md transition-all active:scale-90 group cursor-pointer"
+        >
+          <i className="fas fa-chevron-right text-[13px] ml-0.5 group-hover:translate-x-0.5 transition-transform"></i>
+        </button>
 
         {/* Double-tap Heart Burst Animation */}
         {showHeartBurst && (
